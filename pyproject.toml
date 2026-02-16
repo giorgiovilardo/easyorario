@@ -4,4 +4,44 @@ version = "0.1.0"
 description = "Italian school timetable generation"
 readme = "README.md"
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "litestar[standard,sqlalchemy]>=2.21.0",
+    "aiosqlite>=0.22.1",
+    "sqlalchemy>=2.0.46",
+    "alembic>=1.18.0",
+    "structlog>=25.5.0",
+    "z3-solver>=4.15.8.0",
+]
+
+[dependency-groups]
+dev = [
+    "ipdb>=0.13.13",
+    "ipython>=9.10.0",
+    "pyright>=1.1.408",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+    "ruff>=0.15.1",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.pyright]
+pythonVersion = "3.14"
+venvPath = "."
+venv = ".venv"
+
+[tool.ruff]
+src = ["easyorario", "tests"]
+target-version = "py314"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["easyorario"]
+
+[tool.ruff.format]
+quote-style = "double"
