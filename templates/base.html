@@ -11,7 +11,18 @@
 <body>
     <header>
         <nav>
-            <a href="/">Easyorario</a>
+            <a href="/dashboard"><strong>Easyorario</strong></a>
+            <span style="flex-grow:1"></span>
+            {% if user %}
+                <span>{{ user.email }}</span>
+                <form method="post" action="/esci" style="display:inline">
+                    {{ csrf_input | safe }}
+                    <button type="submit">Esci</button>
+                </form>
+            {% else %}
+                <a href="/accedi">Accedi</a>
+                <a href="/registrati">Registrati</a>
+            {% endif %}
         </nav>
     </header>
     <main>

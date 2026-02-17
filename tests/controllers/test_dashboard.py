@@ -34,3 +34,20 @@ async def test_get_dashboard_unauthenticated_redirects_to_accedi(client):
     response = await client.get("/dashboard", follow_redirects=False)
     assert response.status_code in (301, 302, 303)
     assert "/accedi" in response.headers.get("location", "")
+
+
+async def test_dashboard_nav_shows_logout_button(authenticated_client):
+    """AC #1, #2: Dashboard nav shows user email and 'Esci' logout button."""
+    response = await authenticated_client.get("/dashboard")
+    assert response.status_code == 200
+    assert "Esci" in response.text
+    assert 'action="/esci"' in response.text
+    assert "test@example.com" in response.text
+
+
+async def test_unauthenticated_page_nav_shows_login_register_links(client):
+    """Unauthenticated pages show 'Accedi' and 'Registrati' links in nav."""
+    response = await client.get("/")
+    assert response.status_code == 200
+    assert "Accedi" in response.text
+    assert "Registrati" in response.text
