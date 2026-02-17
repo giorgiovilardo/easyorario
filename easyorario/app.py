@@ -30,6 +30,7 @@ from sqlalchemy.pool import StaticPool
 
 from easyorario.config import settings
 from easyorario.controllers.auth import AuthController
+from easyorario.controllers.dashboard import DashboardController
 from easyorario.controllers.health import HealthController
 from easyorario.controllers.home import HomeController
 from easyorario.models.base import Base
@@ -120,7 +121,7 @@ def create_app(database_url: str | None = None, create_all: bool = False, static
     static_files = create_static_files_router(path="/static", directories=[_BASE_DIR / "static"])
 
     return Litestar(
-        route_handlers=[HealthController, HomeController, AuthController, static_files],
+        route_handlers=[HealthController, HomeController, AuthController, DashboardController, static_files],
         plugins=[SQLAlchemyPlugin(config=db_config)],
         dependencies={
             "user_repo": Provide(provide_user_repository),
