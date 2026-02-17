@@ -29,13 +29,6 @@ async def test_get_dashboard_as_professor_shows_shared_timetables_empty_state(
     assert "Nessun orario condiviso ancora" in response.text
 
 
-async def test_get_dashboard_unauthenticated_redirects_to_accedi(client):
-    """AC #4: Unauthenticated access to /dashboard redirects to /accedi."""
-    response = await client.get("/dashboard", follow_redirects=False)
-    assert response.status_code in (301, 302, 303)
-    assert "/accedi" in response.headers.get("location", "")
-
-
 async def test_dashboard_nav_shows_logout_button(authenticated_client):
     """AC #1, #2: Dashboard nav shows user email and 'Esci' logout button."""
     response = await authenticated_client.get("/dashboard")

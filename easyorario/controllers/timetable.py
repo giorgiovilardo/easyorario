@@ -15,6 +15,6 @@ class TimetableController(Controller):
     async def new_timetable(self, request: Request) -> Template:
         """Stub for new timetable creation — implemented in Epic 2."""
         return Template(
-            template_name="pages/dashboard.html",
-            context={"user": request.user, "is_responsible": True},
+            template_name="pages/timetable_new.html",
+            context={"user": request.user},
         )

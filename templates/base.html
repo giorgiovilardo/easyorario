@@ -11,7 +11,7 @@
 <body>
     <header>
         <nav>
-            <a href="/dashboard"><strong>Easyorario</strong></a>
+            <a href="{% if user %}/dashboard{% else %}/{% endif %}"><strong>Easyorario</strong></a>
             <span style="flex-grow:1"></span>
             {% if user %}
                 <span>{{ user.email }}</span>
