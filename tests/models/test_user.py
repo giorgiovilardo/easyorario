@@ -2,8 +2,7 @@
 
 import uuid
 
-from sqlalchemy import inspect, text
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import inspect
 
 from easyorario.models.user import User
 
@@ -46,6 +45,6 @@ async def test_user_model_email_unique_constraint(db_session):
     db_session.add(user2)
     try:
         await db_session.flush()
-        assert False, "Expected IntegrityError for duplicate email"
+        raise AssertionError("Expected IntegrityError for duplicate email")
     except Exception as exc:
         assert "UNIQUE constraint failed" in str(exc) or "unique" in str(exc).lower()
