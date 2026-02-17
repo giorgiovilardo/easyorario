@@ -2,7 +2,12 @@
 
 import asyncio
 import os
+import sys
 from logging.config import fileConfig
+from pathlib import Path
+
+# Add project root to sys.path so alembic can find the easyorario package
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from alembic import context
 from sqlalchemy import pool
