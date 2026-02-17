@@ -162,7 +162,9 @@ def create_app(database_url: str | None = None, create_all: bool = False, static
             directory=_BASE_DIR / "templates",
             engine=JinjaTemplateEngine,
         ),
-        logging_config=StructLoggingConfig(),
+        logging_config=StructLoggingConfig(
+            disable_stack_trace={NotAuthorizedException},
+        ),
         debug=settings.debug,
     )
 
