@@ -141,7 +141,10 @@ def create_app(database_url: str | None = None, create_all: bool = False, static
     static_files = create_static_files_router(path="/static", directories=[_BASE_DIR / "static"])
 
     return Litestar(
-        route_handlers=[HealthController, HomeController, AuthController, DashboardController, TimetableController, static_files],
+        route_handlers=[
+            HealthController, HomeController, AuthController,
+            DashboardController, TimetableController, static_files,
+        ],
         plugins=[SQLAlchemyPlugin(config=db_config)],
         dependencies={
             "user_repo": Provide(provide_user_repository),
