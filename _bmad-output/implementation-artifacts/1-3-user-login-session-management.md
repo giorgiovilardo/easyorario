@@ -1,6 +1,6 @@
 # Story 1.3: User Login & Session Management
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -24,88 +24,57 @@ so that I can access the system securely.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Configure SessionAuth middleware in app.py (AC: #1, #5)
-  - [ ] 1.1 Create `retrieve_user_handler` function in `src/easyorario/app.py` — loads User from DB using `user_id` stored in session dict
-  - [ ] 1.2 Configure `ServerSideSessionConfig` with sensible defaults (cookie name `session`, httponly=True, samesite=lax)
-  - [ ] 1.3 Create `SessionAuth[User, ServerSideSessionBackend]` instance with `retrieve_user_handler` and `exclude` paths
-  - [ ] 1.4 Set `exclude` to: `["/", "/accedi", "/registrati", "/health", "/static/", "/schema"]` (include `/` so home page is accessible without auth)
-  - [ ] 1.5 Wire `session_auth.on_app_init` into Litestar app via `on_app_init` parameter
-  - [ ] 1.6 Register a `MemoryStore` (or `FileStore` for persistence) under key `"sessions"` in app's `stores` config
-  - [ ] 1.7 Verify CSRF config from story 1.2 still works alongside SessionAuth
+- [x] Task 1: Configure SessionAuth middleware in app.py (AC: #1, #5)
+  - [x] 1.1 Create `retrieve_user_handler` closure in `easyorario/app.py` — loads User from DB using `user_id` stored in session dict
+  - [x] 1.2 Configure `ServerSideSessionConfig` with sensible defaults (cookie name `session`, httponly=True, samesite=lax)
+  - [x] 1.3 Create `SessionAuth[User, ServerSideSessionBackend]` instance with `retrieve_user_handler` and `exclude` paths
+  - [x] 1.4 Set `exclude` to: `["^/$", "/accedi", "/registrati", "/health", "/static/", "/schema"]` (anchored `^/$` to avoid greedy match)
+  - [x] 1.5 Wire `session_auth.on_app_init` into Litestar app via `on_app_init` parameter
+  - [x] 1.6 Register a `MemoryStore` under key `"sessions"` in app's `stores` config
+  - [x] 1.7 Verify CSRF config from story 1.2 still works alongside SessionAuth
 
-- [ ] Task 2: Update AuthService with login logic (AC: #1, #2)
-  - [ ] 2.1 Update `src/easyorario/services/auth.py`
-  - [ ] 2.2 Implement `authenticate_user(email: str, password: str) -> User` method:
-    - Look up user by email via UserRepository.get_by_email()
-    - Verify password with `verify_password()` (already exists from story 1.2)
-    - Raise `InvalidCredentialsError` if user not found or password mismatch
-    - Return User on success
-  - [ ] 2.3 Use constant-time comparison — Argon2's verify already handles this
+- [x] Task 2: Update AuthService with login logic (AC: #1, #2)
+  - [x] 2.1 Update `easyorario/services/auth.py`
+  - [x] 2.2 Implement `authenticate_user(email: str, password: str) -> User` method
+  - [x] 2.3 Use constant-time comparison — Argon2's verify already handles this
 
-- [ ] Task 3: Add auth exceptions and Italian messages (AC: #2)
-  - [ ] 3.1 Update `src/easyorario/exceptions.py` — add `InvalidCredentialsError(EasyorarioError)`
-  - [ ] 3.2 Update `src/easyorario/i18n/errors.py` with login-related messages:
-    - `invalid_credentials`: "Email o password non validi"
-    - `login_required`: "Effettua l'accesso per continuare"
-    - `logout_success`: "Disconnessione effettuata"
+- [x] Task 3: Add auth exceptions and Italian messages (AC: #2)
+  - [x] 3.1 Update `easyorario/exceptions.py` — add `InvalidCredentialsError(EasyorarioError)`
+  - [x] 3.2 Update `easyorario/i18n/errors.py` with login-related messages
 
-- [ ] Task 4: Create login template (AC: #1, #2)
-  - [ ] 4.1 Create `templates/pages/login.html` extending `base.html`
-  - [ ] 4.2 Form with: email input, password input, submit button ("Accedi")
-  - [ ] 4.3 Use Oat UI semantic form elements: `<label data-field>` wrapping, native `<input>` types
-  - [ ] 4.4 Display flash messages using `{% include "partials/flash_messages.html" %}` (created in story 1.2)
-  - [ ] 4.5 Include CSRF token via `{{ csrf_input | safe }}`
-  - [ ] 4.6 Link to registration: "Non hai un account? <a href='/registrati'>Registrati</a>"
+- [x] Task 4: Create login template (AC: #1, #2)
+  - [x] 4.1 Create `templates/pages/login.html` extending `base.html`
+  - [x] 4.2 Form with: email input, password input, submit button ("Accedi")
+  - [x] 4.3 Use Oat UI semantic form elements: `<label data-field>` wrapping, native `<input>` types
+  - [x] 4.4 Display flash messages using `{% include "partials/flash_messages.html" %}`
+  - [x] 4.5 Include CSRF token via `{{ csrf_input | safe }}`
+  - [x] 4.6 Link to registration: "Non hai un account? Registrati"
 
-- [ ] Task 5: Update AuthController with login/logout endpoints (AC: #1, #2, #3)
-  - [ ] 5.1 Update `src/easyorario/controllers/auth.py`
-  - [ ] 5.2 `GET /accedi` — renders login form template (exclude from auth via `opt={"exclude_from_auth": True}`)
-  - [ ] 5.3 `POST /accedi` — processes login:
-    - Extract email, password from form data
-    - Call `AuthService.authenticate_user(email, password)`
-    - On success: `request.set_session({"user_id": str(user.id)})`, redirect to `/dashboard` with Italian success flash
-    - On `InvalidCredentialsError`: re-render form with Italian error message
-  - [ ] 5.4 `POST /esci` — processes logout:
-    - `request.clear_session()`
-    - Redirect to `/accedi?msg=logout_success`
-    - Note: `POST /esci` requires a CSRF token (CSRF middleware from story 1.2 is active on all POSTs). The nav bar logout form (story 1.4) must include `{{ csrf_input | safe }}`.
-  - [ ] 5.5 Auth exclusions are handled by `SessionAuth.exclude` list (Task 1.4). Routes `/accedi` and `/registrati` are already in the exclude list — no need for `opt={"exclude_from_auth": True}` on individual handlers.
+- [x] Task 5: Update AuthController with login/logout endpoints (AC: #1, #2, #3)
+  - [x] 5.1 Update `easyorario/controllers/auth.py`
+  - [x] 5.2 `GET /accedi` — renders login form with optional success message from query param
+  - [x] 5.3 `POST /accedi` — processes login with form data via `LoginFormData` dataclass
+  - [x] 5.4 `POST /esci` — clears session and redirects to `/accedi?msg=logout_success`
+  - [x] 5.5 Auth exclusions handled by `SessionAuth.exclude` list
 
-- [ ] Task 6: Create auth guard for route protection (AC: #5)
-  - [ ] 6.1 Create `src/easyorario/guards/auth.py`
-  - [ ] 6.2 Implement `requires_login(connection, route_handler)` guard:
-    - If `connection.user` is None, raise `NotAuthorizedException` (or redirect to `/accedi`)
-  - [ ] 6.3 Implement `requires_role(connection, route_handler)` guard:
-    - Read `required_role` from `route_handler.opt`
-    - If user's role doesn't match, raise `NotAuthorizedException` with 403
-  - [ ] 6.4 Export guards from `src/easyorario/guards/__init__.py`
-  - [ ] 6.5 Note: Guards are defined here but applied to specific routes in story 1.4 (dashboard). For this story, `SessionAuth.exclude` handles public vs protected route distinction.
+- [x] Task 6: Create auth guard for route protection (AC: #5)
+  - [x] 6.1 Create `easyorario/guards/auth.py`
+  - [x] 6.2 Implement `requires_login(connection, route_handler)` guard
+  - [x] 6.3 Implement `requires_role(connection, route_handler)` guard
+  - [x] 6.4 Export guards from `easyorario/guards/__init__.py`
+  - [x] 6.5 Note: Guards defined here, applied to specific routes in story 1.4
 
-- [ ] Task 7: Create placeholder dashboard route (AC: #1)
-  - [ ] 7.1 Create `templates/pages/dashboard.html` — minimal placeholder extending `base.html`, displays "Dashboard" heading and user email
-  - [ ] 7.2 Create `src/easyorario/controllers/dashboard.py` with `GET /dashboard` that renders the placeholder template
-  - [ ] 7.3 Register DashboardController in app.py route_handlers
-  - [ ] 7.4 Note: Full dashboard is story 1.4 — this is just so login redirect has a target
+- [x] Task 7: Create placeholder dashboard route (AC: #1)
+  - [x] 7.1 Create `templates/pages/dashboard.html` — minimal placeholder extending `base.html`
+  - [x] 7.2 Create `easyorario/controllers/dashboard.py` with `GET /dashboard`
+  - [x] 7.3 Register DashboardController in app.py route_handlers
+  - [x] 7.4 Note: Full dashboard is story 1.4
 
-- [ ] Task 8: Write tests (AC: #1, #2, #3, #4, #5)
-  - [ ] 8.1 `tests/services/test_auth.py` (append to existing from 1.2):
-    - `test_authenticate_user_with_valid_credentials_returns_user`
-    - `test_authenticate_user_with_invalid_email_raises_error`
-    - `test_authenticate_user_with_wrong_password_raises_error`
-  - [ ] 8.2 `tests/controllers/test_auth.py` (append to existing from 1.2):
-    - `test_get_accedi_returns_200_with_form`
-    - `test_post_accedi_with_valid_credentials_redirects_to_dashboard`
-    - `test_post_accedi_with_valid_credentials_sets_session`
-    - `test_post_accedi_with_invalid_credentials_shows_italian_error`
-    - `test_post_esci_clears_session_and_redirects_to_accedi` (must include CSRF token in POST data)
-    - `test_post_esci_without_csrf_token_returns_403`
-    - `test_post_accedi_without_csrf_token_returns_403`
-  - [ ] 8.3 `tests/guards/test_auth_guard.py`:
-    - `test_unauthenticated_request_to_protected_route_returns_401_or_redirect`
-    - `test_authenticated_request_to_protected_route_succeeds`
-  - [ ] 8.4 Update `tests/conftest.py`:
-    - Add `authenticated_client` fixture that creates a user and sets up a session
-    - Add `user_factory` fixture if not already present from story 1.2
+- [x] Task 8: Write tests (AC: #1, #2, #3, #4, #5)
+  - [x] 8.1 `tests/services/test_auth.py`: 3 authenticate_user tests added
+  - [x] 8.2 `tests/controllers/test_auth.py`: 7 login/logout tests added
+  - [x] 8.3 `tests/guards/test_auth_guard.py`: 5 unit tests + 2 integration tests
+  - [x] 8.4 `tests/conftest.py`: `registered_user` and `authenticated_client` fixtures added
 
 ## Dev Notes
 
@@ -444,10 +413,43 @@ tests/controllers/test_auth.py            (UPDATE: add login/logout tests)
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
+- SessionAuth `exclude` pattern `"/"` greedily matched all paths — fixed by anchoring to `"^/$"`
+- `AsyncTestClient` with `follow_redirects=True` on login POST caused session cookie issues in tests — resolved by using `follow_redirects=False` for login and manually following up with dashboard GET
+
 ### Completion Notes List
 
+- SessionAuth configured as closure inside `create_app()` to capture `db_config` for `retrieve_user_handler`
+- `retrieve_user_handler` uses `db_config.get_session()` for DB access (not DI, as handler runs outside DI context)
+- Login uses `LoginFormData` dataclass with Litestar's `Body(media_type=URL_ENCODED)` for form parsing
+- Flash messages use URL query params for cross-redirect success messages (no session-based flash)
+- Guards are unit-tested with mocks and integration-tested via SessionAuth exclude behavior
+- All 46 tests pass, ruff clean, pyright 0 errors
+
+### Change Log
+
+- 2026-02-17: Implemented story 1.3 — login, logout, session management, auth guards, dashboard placeholder
+
 ### File List
+
+New files:
+- easyorario/guards/auth.py
+- easyorario/controllers/dashboard.py
+- templates/pages/dashboard.html
+- tests/guards/__init__.py
+- tests/guards/test_auth_guard.py
+
+Modified files:
+- easyorario/app.py (SessionAuth, on_app_init, stores, DashboardController)
+- easyorario/services/auth.py (authenticate_user method)
+- easyorario/controllers/auth.py (POST /accedi, POST /esci, LoginFormData)
+- easyorario/exceptions.py (InvalidCredentialsError)
+- easyorario/i18n/errors.py (invalid_credentials, login_required, logout_success)
+- easyorario/guards/__init__.py (exports requires_login, requires_role)
+- templates/pages/login.html (full form replacing placeholder)
+- tests/conftest.py (registered_user, authenticated_client fixtures)
+- tests/services/test_auth.py (3 authenticate_user tests)
+- tests/controllers/test_auth.py (7 login/logout tests)
