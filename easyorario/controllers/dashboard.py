@@ -1,18 +1,22 @@
-"""Dashboard controller — minimal placeholder for login redirect target."""
+"""Dashboard controller with role-aware rendering."""
 
-from litestar import Controller, get
+from litestar import Controller, Request, get
 from litestar.response import Template
-
-from easyorario.guards.auth import requires_login
 
 
 class DashboardController(Controller):
-    """Placeholder dashboard (full implementation in story 1.4)."""
+    """Dashboard showing role-appropriate content."""
 
     path = "/dashboard"
-    guards = [requires_login]
 
     @get("/")
-    async def show_dashboard(self) -> Template:
-        """Render the dashboard page."""
-        return Template(template_name="pages/dashboard.html")
+    async def show_dashboard(self, request: Request) -> Template:
+        """Render the dashboard page with role-aware context."""
+        user = request.user
+        return Template(
+            template_name="pages/dashboard.html",
+            context={
+                "user": user,
+                "is_responsible": user.role == "responsible_professor",
+            },
+        )

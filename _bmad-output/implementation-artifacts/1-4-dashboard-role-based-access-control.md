@@ -1,6 +1,6 @@
 # Story 1.4: Dashboard & Role-Based Access Control
 
-Status: ready-for-dev
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
