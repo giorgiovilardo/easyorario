@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Registrati - Easyorario{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="row">
+    <div class="col-6 offset-3">
+      <h1>Registrati</h1>
+
+      {% if error %}
+      <div role="alert" data-variant="error">{{ error }}</div>
+      {% endif %}
+
+      <form method="post" action="/registrati">
+        {{ csrf_input | safe }}
+
+        <label data-field>
+          Email
+          <input type="email" name="email" required placeholder="nome@esempio.it"
+                 value="{{ email_value | default('') }}">
+        </label>
+
+        <label data-field>
+          Password
+          <input type="password" name="password" required minlength="8"
+                 placeholder="Minimo 8 caratteri">
+        </label>
+
+        <label data-field>
+          Conferma password
+          <input type="password" name="password_confirm" required minlength="8"
+                 placeholder="Ripeti la password">
+        </label>
+
+        <button type="submit">Registrati</button>
+      </form>
+
+      <p>Hai già un account? <a href="/accedi">Accedi</a></p>
+    </div>
+  </div>
+</div>
+{% endblock %}
