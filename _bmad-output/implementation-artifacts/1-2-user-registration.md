@@ -1,6 +1,6 @@
 # Story 1.2: User Registration
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -22,83 +22,65 @@ so that I can create an account to manage timetables.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create User model (AC: #4)
-  - [ ] 1.1 Create `src/easyorario/models/user.py` — User SQLAlchemy model
-  - [ ] 1.2 Columns: `id` (UUID, PK), `email` (String, unique, not null), `hashed_password` (String, not null), `role` (String, not null, default "responsible_professor"), `created_at` (DateTime, server default)
-  - [ ] 1.3 Export User from `src/easyorario/models/__init__.py`
-  - [ ] 1.4 Create Alembic migration: `create_users_table`
-  - [ ] 1.5 Verify migration runs successfully with `just db-migrate`
+- [x] Task 1: Create User model (AC: #4)
+  - [x] 1.1 Create `easyorario/models/user.py` — User SQLAlchemy model
+  - [x] 1.2 Columns: `id` (UUID, PK), `email` (String, unique, not null), `hashed_password` (String, not null), `role` (String, not null, default "responsible_professor"), `created_at` (DateTime, server default)
+  - [x] 1.3 Export User from `easyorario/models/__init__.py`
+  - [x] 1.4 Create Alembic migration: `create_users_table`
+  - [x] 1.5 Verify migration runs successfully with `just db-migrate`
 
-- [ ] Task 2: Create UserRepository (AC: #1, #2)
-  - [ ] 2.1 Create `src/easyorario/repositories/user.py` — Advanced Alchemy SQLAlchemy repository
-  - [ ] 2.2 Implement `get_by_email(email)` method for duplicate checking
-  - [ ] 2.3 Export from `src/easyorario/repositories/__init__.py`
+- [x] Task 2: Create UserRepository (AC: #1, #2)
+  - [x] 2.1 Create `easyorario/repositories/user.py` — Advanced Alchemy SQLAlchemy repository
+  - [x] 2.2 Implement `get_by_email(email)` method for duplicate checking
+  - [x] 2.3 Export from `easyorario/repositories/__init__.py`
 
-- [ ] Task 3: Create AuthService (AC: #1, #2, #3)
-  - [ ] 3.1 Add `argon2-cffi` to `pyproject.toml` dependencies
-  - [ ] 3.2 Create `src/easyorario/services/auth.py`
-  - [ ] 3.3 Implement `hash_password(password: str) -> str` using Argon2
-  - [ ] 3.4 Implement `register_user(email, password, role) -> User` with validation:
+- [x] Task 3: Create AuthService (AC: #1, #2, #3)
+  - [x] 3.1 Add `argon2-cffi` to `pyproject.toml` dependencies
+  - [x] 3.2 Create `easyorario/services/auth.py`
+  - [x] 3.3 Implement `hash_password(password: str) -> str` using Argon2
+  - [x] 3.4 Implement `register_user(email, password, role) -> User` with validation:
     - Validate email format (basic check: contains @ and a dot in domain portion). Raise `InvalidEmailError` if invalid.
     - Validate password length >= 8 characters
     - Check email uniqueness via UserRepository
     - Hash password with Argon2
     - Create User via repository
     - Return created User
-  - [ ] 3.5 Raise domain-specific exceptions for validation failures (use Italian error keys from i18n)
-  - [ ] 3.6 Note: password confirmation matching is validated in the **controller** (UI concern), not the service
+  - [x] 3.5 Raise domain-specific exceptions for validation failures (use Italian error keys from i18n)
+  - [x] 3.6 Note: password confirmation matching is validated in the **controller** (UI concern), not the service
 
-- [ ] Task 4: Create Italian error messages for auth (AC: #1, #2, #3)
-  - [ ] 4.1 Create or update `src/easyorario/i18n/errors.py` with auth error mappings:
-    - `email_taken`: "Questo indirizzo email e' gia' registrato"
+- [x] Task 4: Create Italian error messages for auth (AC: #1, #2, #3)
+  - [x] 4.1 Create or update `easyorario/i18n/errors.py` with auth error mappings:
+    - `email_taken`: "Questo indirizzo email è già registrato"
     - `password_too_short`: "La password deve contenere almeno 8 caratteri"
     - `password_mismatch`: "Le password non corrispondono"
     - `registration_success`: "Registrazione completata. Effettua l'accesso."
     - `invalid_email`: "Indirizzo email non valido"
 
-- [ ] Task 5: Create registration template (AC: #1, #2, #3)
-  - [ ] 5.1 Create `templates/pages/register.html` extending `base.html`
-  - [ ] 5.2 Form with: email input, password input, confirm password input, submit button ("Registrati")
-  - [ ] 5.3 Use Oat UI semantic form elements: `<label data-field>` wrapping, native `<input>` types
-  - [ ] 5.4 Display error messages using Oat `role="alert"` with `data-variant="error"`
-  - [ ] 5.5 Include CSRF token via `{{ csrf_input | safe }}` (renders the hidden input automatically)
-  - [ ] 5.6 Link to login page: "Hai gia' un account? Accedi"
+- [x] Task 5: Create registration template (AC: #1, #2, #3)
+  - [x] 5.1 Create `templates/pages/register.html` extending `base.html`
+  - [x] 5.2 Form with: email input, password input, confirm password input, submit button ("Registrati")
+  - [x] 5.3 Use Oat UI semantic form elements: `<label data-field>` wrapping, native `<input>` types
+  - [x] 5.4 Display error messages using Oat `role="alert"` with `data-variant="error"`
+  - [x] 5.5 Include CSRF token via `{{ csrf_input | safe }}` (renders the hidden input automatically)
+  - [x] 5.6 Link to login page: "Hai già un account? Accedi"
 
-- [ ] Task 6: Create AuthController — registration endpoint (AC: #1, #2, #3)
-  - [ ] 6.1 Create `src/easyorario/controllers/auth.py` with `AuthController` class
-  - [ ] 6.2 `GET /registrati` — renders registration form template
-  - [ ] 6.3 `POST /registrati` — processes registration:
-    - Extract email, password, password_confirm from form data
-    - Validate password_confirm matches password (if not, re-render with Italian error "Le password non corrispondono")
-    - Call AuthService.register_user()
-    - On success: redirect to `/accedi?msg=registration_success` (query param for cross-redirect message)
-    - On validation error: re-render form with Italian error message
-    - On duplicate email: re-render form with Italian error message
-  - [ ] 6.4 Register AuthController in app.py route handlers
-  - [ ] 6.5 Create `templates/partials/flash_messages.html` partial for reusable flash message display
+- [x] Task 6: Create AuthController — registration endpoint (AC: #1, #2, #3)
+  - [x] 6.1 Create `easyorario/controllers/auth.py` with `AuthController` class
+  - [x] 6.2 `GET /registrati` — renders registration form template
+  - [x] 6.3 `POST /registrati` — processes registration
+  - [x] 6.4 Register AuthController in app.py route handlers
+  - [x] 6.5 Create `templates/partials/flash_messages.html` partial for reusable flash message display
 
-- [ ] Task 7: Configure CSRF middleware (AC: #1)
-  - [ ] 7.1 Enable Litestar CSRF middleware in app.py configuration
-  - [ ] 7.2 Ensure CSRF token is available in templates and included in all form POSTs
-  - [ ] 7.3 Configure CSRF secret from environment/config
+- [x] Task 7: Configure CSRF middleware (AC: #1)
+  - [x] 7.1 Enable Litestar CSRF middleware in app.py configuration
+  - [x] 7.2 Ensure CSRF token is available in templates and included in all form POSTs
+  - [x] 7.3 Configure CSRF secret from environment/config
 
-- [ ] Task 8: Write tests (AC: #1, #2, #3, #4)
-  - [ ] 8.1 `tests/models/test_user.py` — Test User model creation, column constraints, unique email index
-  - [ ] 8.2 `tests/repositories/test_user_repository.py` — Test get_by_email, create user
-  - [ ] 8.3 `tests/services/test_auth.py`:
-    - `test_hash_password_returns_argon2_hash`
-    - `test_register_user_with_valid_input_creates_user`
-    - `test_register_user_with_duplicate_email_raises_error`
-    - `test_register_user_with_short_password_raises_error`
-    - `test_register_user_with_invalid_email_raises_error`
-  - [ ] 8.4 `tests/controllers/test_auth.py`:
-    - `test_get_registrati_returns_200_with_form`
-    - `test_post_registrati_with_valid_data_redirects_to_accedi`
-    - `test_post_registrati_with_duplicate_email_shows_error`
-    - `test_post_registrati_with_short_password_shows_error`
-    - `test_post_registrati_with_mismatched_passwords_shows_error`
-    - `test_post_registrati_without_csrf_token_returns_403`
-    - Note: redirect test checks for HTTP 302/303 with `Location: /accedi?msg=registration_success`. Do NOT follow the redirect.
+- [x] Task 8: Write tests (AC: #1, #2, #3, #4)
+  - [x] 8.1 `tests/models/test_user.py` — Test User model creation, column constraints, unique email index
+  - [x] 8.2 `tests/repositories/test_user_repository.py` — Test get_by_email, create user
+  - [x] 8.3 `tests/services/test_auth.py` — 7 tests covering hash, verify, register with valid/invalid/duplicate/short
+  - [x] 8.4 `tests/controllers/test_auth.py` — 6 tests covering GET form, POST success redirect, duplicate email, short password, mismatched passwords, missing CSRF
 
 ## Dev Notes
 
@@ -408,10 +390,54 @@ tests/conftest.py                       (UPDATE: add user factory fixture if nee
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
+- Advanced Alchemy `autocommit` before_send_handler does NOT commit on 3xx redirects by default. Fixed by using `autocommit_handler_maker(commit_on_redirect=True)`.
+- In-memory SQLite creates separate databases per connection. Fixed by using `StaticPool` in test configuration.
+- Test client `AsyncTestClient` follows redirects by default. Redirect assertions use `response.history[0]` to inspect the intermediate 302.
+- Engine disposal required in test fixture teardown to prevent leaked connection warnings from GC.
+
 ### Completion Notes List
 
+- All 8 tasks and subtasks implemented following TDD red-green-refactor cycle
+- 24 tests total (5 model, 2 repository, 7 service, 6 controller, 4 pre-existing)
+- All acceptance criteria satisfied
+- Story paths adapted from `src/easyorario/` to `easyorario/` (flat layout)
+- `verify_password` included in AuthService for story 1.3 readiness
+- Placeholder login page at `/accedi` created for redirect target
+- `create_app()` accepts `create_all` param for test table creation
+
+### Change Log
+
+- 2026-02-17: Implemented story 1-2-user-registration — full registration flow with User model, Argon2 hashing, CSRF protection, Italian i18n, and comprehensive tests
+
 ### File List
+
+**Created:**
+- `easyorario/models/user.py` — User SQLAlchemy ORM model
+- `easyorario/repositories/user.py` — UserRepository with get_by_email
+- `easyorario/services/auth.py` — AuthService with hash/verify password, register_user
+- `easyorario/controllers/auth.py` — AuthController with GET/POST /registrati, GET /accedi
+- `easyorario/i18n/errors.py` — Italian error/success message mappings
+- `templates/pages/register.html` — Registration form template
+- `templates/pages/login.html` — Login placeholder template
+- `templates/partials/flash_messages.html` — Reusable alert partial
+- `alembic/versions/5b6c47c2c59b_create_users_table.py` — Migration for users table
+- `tests/models/test_user.py` — 5 User model tests
+- `tests/repositories/__init__.py`
+- `tests/repositories/test_user_repository.py` — 2 repository tests
+- `tests/services/__init__.py`
+- `tests/services/test_auth.py` — 7 auth service tests
+- `tests/controllers/test_auth.py` — 6 auth controller tests
+
+**Modified:**
+- `easyorario/app.py` — Added AuthController, CSRF config, DI providers, StaticPool for tests, autocommit_handler_maker with commit_on_redirect
+- `easyorario/config.py` — Added csrf_secret setting
+- `easyorario/exceptions.py` — Added EmailAlreadyTakenError, PasswordTooShortError, InvalidEmailError, PasswordMismatchError
+- `easyorario/models/__init__.py` — Export User
+- `easyorario/repositories/__init__.py` — Export UserRepository
+- `alembic/env.py` — Import User model for autogenerate
+- `pyproject.toml` — Added argon2-cffi dependency
+- `tests/conftest.py` — Added db_session fixture, engine disposal in client fixture, create_all=True
