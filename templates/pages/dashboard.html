@@ -6,8 +6,23 @@
 
   {% include "partials/flash_messages.html" %}
 
-  {% if request.user %}
-  <p>Benvenuto, {{ request.user.email }}!</p>
+  <p>Benvenuto, {{ user.email }}</p>
+
+  {% if is_responsible %}
+    <section>
+      <h2>I miei orari</h2>
+      <div role="alert">
+        Nessun orario creato ancora. Crea il tuo primo orario!
+      </div>
+      <a href="/orario/nuovo"><button>Nuovo Orario</button></a>
+    </section>
+  {% else %}
+    <section>
+      <h2>Orari condivisi</h2>
+      <div role="alert">
+        Nessun orario condiviso ancora.
+      </div>
+    </section>
   {% endif %}
 </div>
 {% endblock %}
