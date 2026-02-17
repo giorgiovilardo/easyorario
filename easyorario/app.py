@@ -40,8 +40,10 @@ from easyorario.controllers.timetable import TimetableController
 from easyorario.i18n.errors import MESSAGES
 from easyorario.models.base import Base
 from easyorario.models.user import User
+from easyorario.repositories.timetable import TimetableRepository
 from easyorario.repositories.user import UserRepository
 from easyorario.services.auth import AuthService
+from easyorario.services.timetable import TimetableService
 
 _BASE_DIR = Path(__file__).resolve().parent.parent
 _log = structlog.get_logger()
@@ -78,6 +80,16 @@ async def provide_auth_service(user_repo: UserRepository) -> AuthService:
     return AuthService(user_repo=user_repo)
 
 
+async def provide_timetable_repository(db_session: AsyncSession) -> TimetableRepository:
+    """Provide TimetableRepository via DI."""
+    return TimetableRepository(session=db_session)
+
+
+async def provide_timetable_service(timetable_repo: TimetableRepository) -> TimetableService:
+    """Provide TimetableService via DI."""
+    return TimetableService(timetable_repo=timetable_repo)
+
+
 def create_app(database_url: str | None = None, create_all: bool = False, static_pool: bool = False) -> Litestar:
     """Create and configure the Litestar application."""
     engine_cfg = EngineConfig(poolclass=StaticPool) if static_pool else EngineConfig()
@@ -100,11 +112,10 @@ def create_app(database_url: str | None = None, create_all: bool = False, static
         session: dict[str, Any],
         connection: ASGIConnection[Any, Any, Any, Any],
     ) -> User | None:
-        """Load user from DB using user_id stored in session.
+        """Reconstruct User from session-stored attributes.
 
-        Uses a separate session via db_config.get_session() because this handler
-        runs outside Litestar's DI context. The returned User is detached but its
-        scalar attributes (id, email, role) remain accessible.
+        The login handler stores user_id, email, and role in the HTTP session.
+        We reconstruct a transient User instance from these — no DB query needed.
         """
         user_id = session.get("user_id")
         if not user_id:
@@ -114,8 +125,11 @@ def create_app(database_url: str | None = None, create_all: bool = False, static
         except ValueError, AttributeError:
             await _log.awarning("invalid_session_user_id", user_id=user_id)
             return None
-        async with db_config.get_session() as db_session:
-            return await db_session.get(User, parsed_id)
+        email = session.get("email", "")
+        role = session.get("role", "")
+        if not email or not role:
+            return None
+        return User(id=parsed_id, email=email, hashed_password="", role=role)
 
     session_auth = SessionAuth[User, ServerSideSessionBackend](
         retrieve_user_handler=retrieve_user_handler,
@@ -171,6 +185,8 @@ def create_app(database_url: str | None = None, create_all: bool = False, static
         dependencies={
             "user_repo": Provide(provide_user_repository),
             "auth_service": Provide(provide_auth_service),
+            "timetable_repo": Provide(provide_timetable_repository),
+            "timetable_service": Provide(provide_timetable_service),
         },
         on_app_init=[session_auth.on_app_init],
         exception_handlers={NotAuthorizedException: _auth_exception_handler},
