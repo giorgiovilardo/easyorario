@@ -87,7 +87,7 @@ class AuthController(Controller):
         try:
             user = await auth_service.authenticate_user(data.email, data.password)
             request.clear_session()
-            request.set_session({"user_id": str(user.id)})
+            request.set_session({"user_id": str(user.id), "email": user.email, "role": user.role})
             return Redirect(path="/dashboard")
         except InvalidCredentialsError:
             return Template(
