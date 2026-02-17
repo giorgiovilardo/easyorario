@@ -3,25 +3,27 @@
 {% block content %}
 <div class="container">
   <h1>Dashboard</h1>
+  <p class="text-lighter">Benvenuto, {{ user.email }}</p>
 
   {% include "partials/flash_messages.html" %}
 
-  <p>Benvenuto, {{ user.email }}</p>
-
   {% if is_responsible %}
     <section>
-      <h2>I miei orari</h2>
-      <div role="alert">
-        Nessun orario creato ancora. Crea il tuo primo orario!
+      <div class="flex items-center justify-between mb-4">
+        <h2 style="margin: 0;">I miei orari</h2>
+        <a href="/orario/nuovo" class="button">Nuovo Orario</a>
       </div>
-      <a href="/orario/nuovo"><button>Nuovo Orario</button></a>
+      <article class="card text-center">
+        <p class="text-lighter">Nessun orario creato ancora.</p>
+        <a href="/orario/nuovo" class="button outline">Crea il tuo primo orario</a>
+      </article>
     </section>
   {% else %}
     <section>
       <h2>Orari condivisi</h2>
-      <div role="alert">
-        Nessun orario condiviso ancora.
-      </div>
+      <article class="card text-center">
+        <p class="text-lighter">Nessun orario condiviso ancora.</p>
+      </article>
     </section>
   {% endif %}
 </div>

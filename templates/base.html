@@ -11,18 +11,21 @@
 <body>
     <header>
         <nav>
-            <a href="{% if user %}/dashboard{% else %}/{% endif %}"><strong>Easyorario</strong></a>
-            <span style="flex-grow:1"></span>
-            {% if user %}
-                <span>{{ user.email }}</span>
-                <form method="post" action="/esci" style="display:inline">
-                    {{ csrf_input | safe }}
-                    <button type="submit">Esci</button>
-                </form>
-            {% else %}
-                <a href="/accedi">Accedi</a>
-                <a href="/registrati">Registrati</a>
-            {% endif %}
+            <div class="container flex items-center justify-between">
+                <a href="{% if user %}/dashboard{% else %}/{% endif %}"><strong>Easyorario</strong></a>
+                <div class="hstack">
+                    {% if user %}
+                        <span>{{ user.email }}</span>
+                        <form method="post" action="/esci" style="display:inline">
+                            {{ csrf_input | safe }}
+                            <button type="submit" class="small outline">Esci</button>
+                        </form>
+                    {% else %}
+                        <a href="/accedi">Accedi</a>
+                        <a href="/registrati">Registrati</a>
+                    {% endif %}
+                </div>
+            </div>
         </nav>
     </header>
     <main>

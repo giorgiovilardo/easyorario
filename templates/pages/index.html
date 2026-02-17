@@ -3,8 +3,38 @@
 {% block title %}Easyorario — Generatore di orari scolastici{% endblock %}
 
 {% block content %}
-<section>
-    <h1>Benvenuto su Easyorario</h1>
-    <p>Generatore di orari scolastici per le scuole italiane.</p>
-</section>
+<div class="container text-center mt-6">
+    <h1>Crea orari scolastici senza stress</h1>
+    <p class="text-lighter" style="font-size: var(--text-4);">
+        Scrivi i tuoi vincoli in italiano, e il risolutore genera
+        l'orario perfetto per la tua scuola.
+    </p>
+    <div class="hstack justify-center mt-4 gap-4">
+        <a href="/registrati" class="button large">Inizia gratis</a>
+        <a href="/accedi" class="button outline large">Accedi</a>
+    </div>
+</div>
+
+<div class="container mt-6">
+    <div class="row">
+        <div class="col-4">
+            <article class="card">
+                <h3>Vincoli in italiano</h3>
+                <p>Descrivi le regole come faresti a voce: "Il prof. Rossi non viene il lunedi'." L'intelligenza artificiale le traduce automaticamente.</p>
+            </article>
+        </div>
+        <div class="col-4">
+            <article class="card">
+                <h3>Risolutore automatico</h3>
+                <p>Un motore matematico trova l'orario ottimale rispettando tutti i vincoli. Se non esiste soluzione, ti dice perche'.</p>
+            </article>
+        </div>
+        <div class="col-4">
+            <article class="card">
+                <h3>Collaborazione</h3>
+                <p>Condividi l'orario con colleghi e docenti. Ognuno puo' aggiungere i propri vincoli e lasciare commenti.</p>
+            </article>
+        </div>
+    </div>
+</div>
 {% endblock %}

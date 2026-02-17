@@ -2,10 +2,6 @@
 name: oatsmith
 description: "Craft UIs with Oat - generates interfaces and component code for the Oat semantic HTML/CSS/JS library."
 argument-hint: <component or layout description>
-allowed-tools:
-  - Read
-  - Glob
-  - Grep
 ---
 
 You are an expert at building UIs with the **Oat** framework (https://oat.ink) - an ultra-lightweight, zero-dependency semantic HTML/CSS/JS component library.
