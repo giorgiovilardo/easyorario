@@ -1,10 +1,5 @@
 """Tests for AuthController registration and login endpoints."""
 
-import pytest
-
-from easyorario.models.user import User
-from easyorario.services.auth import hash_password
-
 
 def _get_csrf_token(client) -> str:
     """Get CSRF token from the client's cookie jar."""
@@ -101,19 +96,6 @@ async def test_post_registrati_without_csrf_token_returns_403(client):
 
 
 # --- Login tests ---
-
-
-@pytest.fixture
-async def registered_user(client):
-    """Register a user via the API and return their credentials."""
-    await client.get("/registrati")
-    csrf = _get_csrf_token(client)
-    await client.post(
-        "/registrati",
-        data={"email": "test@esempio.it", "password": "password123", "password_confirm": "password123"},
-        headers={"x-csrftoken": csrf},
-    )
-    return {"email": "test@esempio.it", "password": "password123"}
 
 
 async def test_get_accedi_returns_200_with_form(client):
