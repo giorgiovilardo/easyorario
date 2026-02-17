@@ -22,6 +22,7 @@ Package management uses **uv**. Task runner uses **just** (justfile at project r
 ```bash
 just dev              # Start Litestar dev server with hot reload
 just test             # Run pytest
+just check            # Run format + lint + typecheck (run before every commit)
 just lint             # Run ruff check + pyright
 just fmt              # Run ruff format
 just db-migrate       # Run alembic upgrade head
@@ -119,6 +120,11 @@ jj bookmark set <name>        # Move bookmark to current commit
 jj git push --bookmark <name> # Push bookmark as git branch
 ```
 
+**Diff and status commands:**
+- Use `jj diff --no-pager --git` to output diffs in git format (for piping, reviewing, etc.)
+- Use `jj status` to see which files changed in a commit (not `jj diff`)
+- Use `jj diff --stat` only when you need to see how much data was added/removed
+
 **Key differences from git:**
 - No `git add` — files are auto-tracked, always part of the working-copy commit
 - No `git stash` — just `jj new @-` to park current work and start fresh from parent
@@ -146,6 +152,8 @@ jj log -r "bookmarks()"       # All bookmarked commits
 
 ## Key Rules
 
+- **Run `just check` before every commit** — ensures format, lint, and typecheck pass
+- **Run `just test` separately** — tests are not included in `just check`
 - **Never use `from __future__ import annotations`** — we target Python 3.14+, all modern type syntax is native
 - User-facing text in **Italian**, logs and code in **English**
 - Never hardcode Italian strings in Python — use templates or `i18n/errors.py` message mappings
@@ -153,6 +161,7 @@ jj log -r "bookmarks()"       # All bookmarked commits
 - Never log API keys or session secrets
 - LLM API keys are **not persisted** — user provides per session
 - All external LLM calls go through `services/llm.py`, all Z3 calls through `services/solver.py`
+- **Create a jj bookmark** at the start of each story implementation
 
 ## Planning Documents
 

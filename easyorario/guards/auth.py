@@ -18,9 +18,7 @@ def requires_role(connection: ASGIConnection, handler: BaseRouteHandler) -> None
     """
     required_role = handler.opt.get("required_role")
     if not required_role:
-        raise ImproperlyConfiguredException(
-            "requires_role guard requires 'required_role' in handler opt"
-        )
+        raise ImproperlyConfiguredException("requires_role guard requires 'required_role' in handler opt")
     if not connection.user or connection.user.role != required_role:
         raise NotAuthorizedException(detail="Insufficient permissions")
 

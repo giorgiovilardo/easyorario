@@ -24,6 +24,13 @@ fmt:
     uv run ruff check --select I --fix easyorario/ tests/
     uv run ruff format easyorario/ tests/
 
+# Run all quality checks: format, lint, typecheck
+check:
+    uv run ruff check --select I --fix easyorario/ tests/
+    uv run ruff format easyorario/ tests/
+    uv run ruff check easyorario/ tests/
+    uv run pyright easyorario/
+
 # Run Alembic upgrade head
 db-migrate:
     uv run alembic upgrade head
