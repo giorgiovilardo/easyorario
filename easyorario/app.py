@@ -4,6 +4,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+import structlog
 from advanced_alchemy.extensions.litestar import (
     AlembicAsyncConfig,
     AsyncSessionConfig,
@@ -12,11 +13,12 @@ from advanced_alchemy.extensions.litestar import (
     SQLAlchemyPlugin,
 )
 from advanced_alchemy.extensions.litestar.plugins.init.config.asyncio import autocommit_handler_maker
-from litestar import Litestar
+from litestar import Litestar, Request, Response
 from litestar.config.csrf import CSRFConfig
 from litestar.connection import ASGIConnection
 from litestar.contrib.jinja import JinjaTemplateEngine
 from litestar.di import Provide
+from litestar.exceptions import NotAuthorizedException
 from litestar.logging import StructLoggingConfig
 from litestar.middleware.session.server_side import ServerSideSessionBackend, ServerSideSessionConfig
 from litestar.response import Redirect
@@ -39,6 +41,7 @@ from easyorario.repositories.user import UserRepository
 from easyorario.services.auth import AuthService
 
 _BASE_DIR = Path(__file__).resolve().parent.parent
+_log = structlog.get_logger()
 
 
 def _set_sqlite_pragmas(dbapi_connection, connection_record) -> None:
@@ -47,6 +50,11 @@ def _set_sqlite_pragmas(dbapi_connection, connection_record) -> None:
     cursor.execute("PRAGMA synchronous=NORMAL")
     cursor.execute("PRAGMA foreign_keys=ON")
     cursor.close()
+
+
+def _auth_redirect_handler(_: Request, __: NotAuthorizedException) -> Response:
+    """Redirect unauthenticated users to login page instead of returning 401."""
+    return Redirect(path="/accedi")
 
 
 async def provide_user_repository(db_session: AsyncSession) -> UserRepository:

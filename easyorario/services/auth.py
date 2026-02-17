@@ -1,5 +1,6 @@
 """Authentication service for registration and password management."""
 
+import structlog
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 
@@ -13,6 +14,7 @@ from easyorario.models.user import User
 from easyorario.repositories.user import UserRepository
 
 _ph = PasswordHasher()
+_log = structlog.get_logger()
 
 MIN_PASSWORD_LENGTH = 8
 
@@ -30,6 +32,11 @@ def verify_password(hashed_password: str, password: str) -> bool:
         return False
 
 
+def _normalize_email(email: str) -> str:
+    """Lowercase and strip whitespace from email."""
+    return email.lower().strip()
+
+
 class AuthService:
     """Handles user registration and credential validation."""
 
@@ -38,6 +45,8 @@ class AuthService:
 
     async def register_user(self, email: str, password: str, role: str = "responsible_professor") -> User:
         """Register a new user after validating input."""
+        email = _normalize_email(email)
+
         if "@" not in email:
             raise InvalidEmailError
         local, domain = email.rsplit("@", 1)
@@ -55,7 +64,9 @@ class AuthService:
             hashed_password=hash_password(password),
             role=role,
         )
-        return await self.user_repo.add(user)
+        created = await self.user_repo.add(user)
+        await _log.ainfo("user_registered", email=email)
+        return created
 
     async def authenticate_user(self, email: str, password: str) -> User:
         """Verify credentials and return user, or raise InvalidCredentialsError."""

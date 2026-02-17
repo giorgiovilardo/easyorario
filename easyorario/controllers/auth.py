@@ -18,6 +18,10 @@ from easyorario.exceptions import (
 from easyorario.i18n.errors import MESSAGES
 from easyorario.services.auth import AuthService
 
+_log = structlog.get_logger()
+
+_LOGIN_PAGE_MESSAGES: set[str] = {"registration_success", "logout_success"}
+
 
 @dataclass
 class RegisterFormData:
@@ -68,7 +72,7 @@ class AuthController(Controller):
     async def show_login(self, msg: str | None = None) -> Template:
         """Render the login form."""
         context: dict[str, str] = {}
-        if msg and msg in MESSAGES:
+        if msg and msg in _LOGIN_PAGE_MESSAGES:
             context["success"] = MESSAGES[msg]
         return Template(template_name="pages/login.html", context=context)
 
