@@ -21,6 +21,7 @@ from litestar.di import Provide
 from litestar.exceptions import NotAuthorizedException
 from litestar.logging import StructLoggingConfig
 from litestar.middleware.session.server_side import ServerSideSessionBackend, ServerSideSessionConfig
+from litestar.plugins.structlog import StructlogConfig, StructlogPlugin
 from litestar.response import Redirect, Template
 from litestar.security.session_auth import SessionAuth
 from litestar.static_files import create_static_files_router
@@ -138,6 +139,25 @@ def create_app(database_url: str | None = None, create_all: bool = False, static
 
     static_files = create_static_files_router(path="/static", directories=[_BASE_DIR / "static"])
 
+    struct_log_config = StructLoggingConfig(
+        disable_stack_trace={NotAuthorizedException},
+    )
+    # Route uvicorn loggers through structlog's ProcessorFormatter for consistent format
+    assert struct_log_config.standard_lib_logging_config is not None
+    struct_log_config.standard_lib_logging_config.loggers.update(
+        {
+            "uvicorn": {"level": "INFO", "handlers": ["queue_listener"], "propagate": False},
+            "uvicorn.access": {"level": "INFO", "handlers": ["queue_listener"], "propagate": False},
+            "uvicorn.error": {"level": "INFO", "handlers": ["queue_listener"], "propagate": False},
+        }
+    )
+    structlog_plugin = StructlogPlugin(
+        config=StructlogConfig(
+            structlog_logging_config=struct_log_config,
+            enable_middleware_logging=False,
+        )
+    )
+
     return Litestar(
         route_handlers=[
             HealthController,
@@ -147,7 +167,7 @@ def create_app(database_url: str | None = None, create_all: bool = False, static
             TimetableController,
             static_files,
         ],
-        plugins=[SQLAlchemyPlugin(config=db_config)],
+        plugins=[SQLAlchemyPlugin(config=db_config), structlog_plugin],
         dependencies={
             "user_repo": Provide(provide_user_repository),
             "auth_service": Provide(provide_auth_service),
@@ -161,9 +181,6 @@ def create_app(database_url: str | None = None, create_all: bool = False, static
         template_config=TemplateConfig(
             directory=_BASE_DIR / "templates",
             engine=JinjaTemplateEngine,
-        ),
-        logging_config=StructLoggingConfig(
-            disable_stack_trace={NotAuthorizedException},
         ),
         debug=settings.debug,
     )
