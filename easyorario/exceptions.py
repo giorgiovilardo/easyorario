@@ -29,3 +29,11 @@ class InvalidCredentialsError(EasyorarioError):
     """Raised when login credentials are invalid."""
 
     error_key = "invalid_credentials"
+
+
+class InvalidTimetableDataError(EasyorarioError):
+    """Raised when timetable form data fails validation."""
+
+    def __init__(self, error_key: str) -> None:
+        self.error_key = error_key
+        super().__init__(error_key)
