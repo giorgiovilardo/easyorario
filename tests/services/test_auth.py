@@ -4,6 +4,7 @@ import pytest
 
 from easyorario.exceptions import (
     EmailAlreadyTakenError,
+    InvalidCredentialsError,
     InvalidEmailError,
     PasswordTooShortError,
 )
@@ -81,3 +82,23 @@ async def test_register_user_rejects_degenerate_emails(auth_service, bad_email):
     """register_user raises InvalidEmailError for degenerate email formats."""
     with pytest.raises(InvalidEmailError):
         await auth_service.register_user(bad_email, "validpass123")
+
+
+async def test_authenticate_user_with_valid_credentials_returns_user(auth_service):
+    """authenticate_user returns the User when email and password are correct."""
+    await auth_service.register_user("login@example.com", "validpass123")
+    user = await auth_service.authenticate_user("login@example.com", "validpass123")
+    assert user.email == "login@example.com"
+
+
+async def test_authenticate_user_with_invalid_email_raises_error(auth_service):
+    """authenticate_user raises InvalidCredentialsError for unknown email."""
+    with pytest.raises(InvalidCredentialsError):
+        await auth_service.authenticate_user("nobody@example.com", "validpass123")
+
+
+async def test_authenticate_user_with_wrong_password_raises_error(auth_service):
+    """authenticate_user raises InvalidCredentialsError for wrong password."""
+    await auth_service.register_user("wrong@example.com", "validpass123")
+    with pytest.raises(InvalidCredentialsError):
+        await auth_service.authenticate_user("wrong@example.com", "wrongpassword")

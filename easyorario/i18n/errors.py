@@ -6,4 +6,7 @@ MESSAGES: dict[str, str] = {
     "password_mismatch": "Le password non corrispondono",
     "invalid_email": "Indirizzo email non valido",
     "registration_success": "Registrazione completata. Effettua l'accesso.",
+    "invalid_credentials": "Email o password non validi",
+    "login_required": "Effettua l'accesso per continuare",
+    "logout_success": "Disconnessione effettuata",
 }
