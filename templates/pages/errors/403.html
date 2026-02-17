@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Accesso negato - Easyorario{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="row">
+    <div class="col-6 offset-3">
+      <h1>Accesso negato</h1>
+      <div role="alert" data-variant="error">
+        {{ error | default("Non hai i permessi per accedere a questa risorsa.") }}
+      </div>
+      <a href="/dashboard">Torna alla dashboard</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

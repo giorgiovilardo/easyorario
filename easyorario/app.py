@@ -35,6 +35,7 @@ from easyorario.controllers.auth import AuthController
 from easyorario.controllers.dashboard import DashboardController
 from easyorario.controllers.health import HealthController
 from easyorario.controllers.home import HomeController
+from easyorario.controllers.timetable import TimetableController
 from easyorario.models.base import Base
 from easyorario.models.user import User
 from easyorario.repositories.user import UserRepository
@@ -52,9 +53,20 @@ def _set_sqlite_pragmas(dbapi_connection, connection_record) -> None:
     cursor.close()
 
 
-def _auth_redirect_handler(_: Request, __: NotAuthorizedException) -> Response:
-    """Redirect unauthenticated users to login page instead of returning 401."""
-    return Redirect(path="/accedi")
+def _auth_exception_handler(request: Request, _: NotAuthorizedException) -> Response:
+    """Handle auth exceptions: redirect unauthenticated users, show 403 for wrong role."""
+    from litestar.response import Template
+
+    from easyorario.i18n.errors import MESSAGES
+
+    user = request.scope.get("user")
+    if not user:
+        return Redirect(path="/accedi")
+    return Template(
+        template_name="pages/errors/403.html",
+        context={"error": MESSAGES["forbidden"], "user": user},
+        status_code=403,
+    )
 
 
 async def provide_user_repository(db_session: AsyncSession) -> UserRepository:
@@ -129,14 +141,14 @@ def create_app(database_url: str | None = None, create_all: bool = False, static
     static_files = create_static_files_router(path="/static", directories=[_BASE_DIR / "static"])
 
     return Litestar(
-        route_handlers=[HealthController, HomeController, AuthController, DashboardController, static_files],
+        route_handlers=[HealthController, HomeController, AuthController, DashboardController, TimetableController, static_files],
         plugins=[SQLAlchemyPlugin(config=db_config)],
         dependencies={
             "user_repo": Provide(provide_user_repository),
             "auth_service": Provide(provide_auth_service),
         },
         on_app_init=[session_auth.on_app_init],
-        exception_handlers={NotAuthorizedException: _auth_redirect_handler},
+        exception_handlers={NotAuthorizedException: _auth_exception_handler},
         csrf_config=csrf_config,
         # TODO: Replace MemoryStore with FileStore or DB-backed store before deployment.
         # Sessions are lost on restart and partitioned across workers.

@@ -23,3 +23,9 @@ def requires_role(connection: ASGIConnection, handler: BaseRouteHandler) -> None
         )
     if not connection.user or connection.user.role != required_role:
         raise NotAuthorizedException(detail="Insufficient permissions")
+
+
+def requires_responsible_professor(connection: ASGIConnection, _: BaseRouteHandler) -> None:
+    """Ensure user is a Responsible Professor."""
+    if not connection.user or connection.user.role != "responsible_professor":
+        raise NotAuthorizedException(detail="Insufficient permissions")
