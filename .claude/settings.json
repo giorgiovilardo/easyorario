@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r \".tool_input.file_path // empty\"); if [[ \"$f\" == *.py ]]; then uv run ruff check --select I --fix \"$f\" 2>/dev/null; uv run ruff format \"$f\" 2>/dev/null; fi; true",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
