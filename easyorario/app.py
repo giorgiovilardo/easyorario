@@ -21,7 +21,7 @@ from litestar.di import Provide
 from litestar.exceptions import NotAuthorizedException
 from litestar.logging import StructLoggingConfig
 from litestar.middleware.session.server_side import ServerSideSessionBackend, ServerSideSessionConfig
-from litestar.response import Redirect
+from litestar.response import Redirect, Template
 from litestar.security.session_auth import SessionAuth
 from litestar.static_files import create_static_files_router
 from litestar.stores.memory import MemoryStore
@@ -36,6 +36,7 @@ from easyorario.controllers.dashboard import DashboardController
 from easyorario.controllers.health import HealthController
 from easyorario.controllers.home import HomeController
 from easyorario.controllers.timetable import TimetableController
+from easyorario.i18n.errors import MESSAGES
 from easyorario.models.base import Base
 from easyorario.models.user import User
 from easyorario.repositories.user import UserRepository
@@ -55,13 +56,10 @@ def _set_sqlite_pragmas(dbapi_connection, connection_record) -> None:
 
 def _auth_exception_handler(request: Request, _: NotAuthorizedException) -> Response:
     """Handle auth exceptions: redirect unauthenticated users, show 403 for wrong role."""
-    from litestar.response import Template
-
-    from easyorario.i18n.errors import MESSAGES
-
     user = request.scope.get("user")
     if not user:
         return Redirect(path="/accedi")
+    _log.warning("forbidden_access", user_email=user.email, path=request.url.path)
     return Template(
         template_name="pages/errors/403.html",
         context={"error": MESSAGES["forbidden"], "user": user},
