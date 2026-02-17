@@ -1,17 +1,14 @@
 """Tests for database configuration."""
 
-import tempfile
-from pathlib import Path
-
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from easyorario.app import _set_sqlite_pragmas
 
 
-async def test_sqlite_wal_mode_is_active():
+async def test_sqlite_wal_mode_is_active(tmp_path):
     """SQLite WAL mode is enabled on file-based database connections."""
-    db_path = Path(tempfile.mkdtemp()) / "test_wal.db"
+    db_path = tmp_path / "test_wal.db"
     engine = create_async_engine(f"sqlite+aiosqlite:///{db_path}")
 
     # Register the same pragma listener used in production
