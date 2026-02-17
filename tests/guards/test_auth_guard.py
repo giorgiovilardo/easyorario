@@ -94,6 +94,7 @@ def test_requires_responsible_professor_with_correct_role_succeeds():
 
 # Integration tests: guard behavior via SessionAuth + exception handler
 
+
 async def test_unauthenticated_request_to_protected_route_redirects_to_accedi(client):
     """Unauthenticated request to /dashboard redirects to /accedi."""
     response = await client.get("/dashboard", follow_redirects=False)

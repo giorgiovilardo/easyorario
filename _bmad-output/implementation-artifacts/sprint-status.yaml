@@ -45,7 +45,7 @@ development_status:
   1-1-project-skeleton-development-infrastructure: review
   1-2-user-registration: done
   1-3-user-login-session-management: review
-  1-4-dashboard-role-based-access-control: in-progress
+  1-4-dashboard-role-based-access-control: review
   epic-1-retrospective: optional
 
   # Epic 2: Timetable Creation & Constraint Input

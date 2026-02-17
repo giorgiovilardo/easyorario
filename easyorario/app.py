@@ -112,7 +112,7 @@ def create_app(database_url: str | None = None, create_all: bool = False, static
             return None
         try:
             parsed_id = uuid.UUID(user_id)
-        except (ValueError, AttributeError):
+        except ValueError, AttributeError:
             await _log.awarning("invalid_session_user_id", user_id=user_id)
             return None
         async with db_config.get_session() as db_session:
@@ -142,8 +142,12 @@ def create_app(database_url: str | None = None, create_all: bool = False, static
 
     return Litestar(
         route_handlers=[
-            HealthController, HomeController, AuthController,
-            DashboardController, TimetableController, static_files,
+            HealthController,
+            HomeController,
+            AuthController,
+            DashboardController,
+            TimetableController,
+            static_files,
         ],
         plugins=[SQLAlchemyPlugin(config=db_config)],
         dependencies={

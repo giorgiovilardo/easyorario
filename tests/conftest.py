@@ -96,9 +96,7 @@ async def professor_user(client):
         if key.startswith("db_engine"):
             engine = app.state._state[key]
             async with engine.begin() as conn:
-                await conn.execute(
-                    text("UPDATE users SET role = 'professor' WHERE email = 'prof@esempio.it'")
-                )
+                await conn.execute(text("UPDATE users SET role = 'professor' WHERE email = 'prof@esempio.it'"))
             break
     return {"email": "prof@esempio.it", "password": "password123"}
 
