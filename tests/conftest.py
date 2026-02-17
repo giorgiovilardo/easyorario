@@ -2,8 +2,10 @@
 
 import pytest
 from litestar.testing import AsyncTestClient
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 from easyorario.app import create_app
+from easyorario.models.base import Base
 
 TEST_DB_URL = "sqlite+aiosqlite://"
 
@@ -14,3 +16,14 @@ async def client():
     app = create_app(database_url=TEST_DB_URL)
     async with AsyncTestClient(app=app) as client:
         yield client
+
+
+@pytest.fixture
+async def db_session():
+    """Standalone async session with in-memory database for model/repo tests."""
+    engine = create_async_engine(TEST_DB_URL)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    async with AsyncSession(engine) as session:
+        yield session
+    await engine.dispose()
