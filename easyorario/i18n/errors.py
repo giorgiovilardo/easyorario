@@ -1,6 +1,6 @@
 """Italian error and success message mappings."""
 
-ERRORS: dict[str, str] = {
+MESSAGES: dict[str, str] = {
     "email_taken": "Questo indirizzo email è già registrato",
     "password_too_short": "La password deve contenere almeno 8 caratteri",
     "password_mismatch": "Le password non corrispondono",

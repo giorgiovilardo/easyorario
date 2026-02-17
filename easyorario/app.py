@@ -52,9 +52,9 @@ async def provide_auth_service(user_repo: UserRepository) -> AuthService:
     return AuthService(user_repo=user_repo)
 
 
-def create_app(database_url: str | None = None, create_all: bool = False) -> Litestar:
+def create_app(database_url: str | None = None, create_all: bool = False, static_pool: bool = False) -> Litestar:
     """Create and configure the Litestar application."""
-    engine_cfg = EngineConfig(poolclass=StaticPool) if create_all else EngineConfig()
+    engine_cfg = EngineConfig(poolclass=StaticPool) if static_pool else EngineConfig()
     db_config = SQLAlchemyAsyncConfig(
         connection_string=database_url or settings.database_url,
         before_send_handler=autocommit_handler_maker(commit_on_redirect=True),

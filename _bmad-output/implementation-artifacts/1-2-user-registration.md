@@ -1,6 +1,6 @@
 # Story 1.2: User Registration
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -412,6 +412,7 @@ Claude Opus 4.6
 ### Change Log
 
 - 2026-02-17: Implemented story 1-2-user-registration — full registration flow with User model, Argon2 hashing, CSRF protection, Italian i18n, and comprehensive tests
+- 2026-02-17: Code review — fixed 9 issues (2 HIGH, 4 MEDIUM, 3 LOW): pyright type error via CommonTableAttributes mixin, repo abstraction bypass, dead code removal, StaticPool decoupling, email validation hardening, ERRORS→MESSAGES rename, edge case tests added
 
 ### File List
 
@@ -441,3 +442,4 @@ Claude Opus 4.6
 - `alembic/env.py` — Import User model for autogenerate
 - `pyproject.toml` — Added argon2-cffi dependency
 - `tests/conftest.py` — Added db_session fixture, engine disposal in client fixture, create_all=True
+- `uv.lock` — Updated with argon2-cffi dependency

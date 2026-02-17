@@ -66,3 +66,21 @@ async def test_register_user_with_invalid_email_raises_error(db_session):
     service = AuthService(user_repo=repo)
     with pytest.raises(InvalidEmailError):
         await service.register_user("notanemail", "validpass123")
+
+
+@pytest.mark.parametrize(
+    "bad_email",
+    [
+        "@foo.com",  # no local part
+        "user@",  # no domain
+        "user@.com",  # domain starts with dot
+        "user@foo.",  # domain ends with dot
+        "",  # empty string
+    ],
+)
+async def test_register_user_rejects_degenerate_emails(db_session, bad_email):
+    """register_user raises InvalidEmailError for degenerate email formats."""
+    repo = UserRepository(session=db_session)
+    service = AuthService(user_repo=repo)
+    with pytest.raises(InvalidEmailError):
+        await service.register_user(bad_email, "validpass123")
