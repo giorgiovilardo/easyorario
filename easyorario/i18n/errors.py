@@ -11,6 +11,7 @@ MESSAGES: dict[str, str] = {
     "logout_success": "Disconnessione effettuata",
     "forbidden": "Non hai i permessi per accedere a questa risorsa",
     "class_identifier_required": "L'identificativo della classe è obbligatorio",
+    "class_identifier_too_long": "L'identificativo della classe non può superare 255 caratteri",
     "school_year_required": "L'anno scolastico è obbligatorio",
     "weekly_hours_invalid": "Le ore settimanali devono essere un numero tra 1 e 60",
     "subjects_required": "Inserire almeno una materia",

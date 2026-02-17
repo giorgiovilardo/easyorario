@@ -1,6 +1,6 @@
 # Story 2.1: Create New Timetable
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -447,10 +447,32 @@ b0e95b2 unify log format: route uvicorn loggers through structlog via StructlogP
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
 ### Completion Notes List
 
+- auth.py session data expanded (email, role) to support session-cached user pattern
+- Code review (2026-02-17): fixed misleading error key for class_identifier > 255 chars, added 4 missing tests (POST guard, teacher format, empty teacher name, class_identifier length)
+
 ### File List
+
+- `easyorario/models/timetable.py` — CREATE: Timetable ORM model
+- `easyorario/models/user.py` — UPDATE: added timetables relationship
+- `easyorario/models/__init__.py` — UPDATE: export Timetable
+- `easyorario/repositories/timetable.py` — CREATE: TimetableRepository with get_by_owner
+- `easyorario/repositories/__init__.py` — UPDATE: export TimetableRepository
+- `easyorario/services/timetable.py` — CREATE: TimetableService with validation and parsing
+- `easyorario/controllers/timetable.py` — UPDATE: create form GET/POST + vincoli stub
+- `easyorario/controllers/auth.py` — UPDATE: store email and role in session (bug fix)
+- `easyorario/app.py` — UPDATE: DI providers for TimetableRepository and TimetableService
+- `easyorario/exceptions.py` — UPDATE: added InvalidTimetableDataError
+- `easyorario/i18n/errors.py` — UPDATE: timetable validation messages
+- `templates/pages/timetable_new.html` — UPDATE: replaced stub with create form
+- `templates/pages/timetable_constraints.html` — CREATE: stub placeholder for vincoli
+- `alembic/versions/74998b4f2abc_create_timetables_table.py` — CREATE: migration
+- `tests/models/test_timetable.py` — CREATE: model tests (2 tests)
+- `tests/repositories/test_timetable_repository.py` — CREATE: repository tests (2 tests)
+- `tests/services/test_timetable.py` — CREATE: service tests (11 tests)
+- `tests/controllers/test_timetable.py` — CREATE: controller tests (7 tests)
