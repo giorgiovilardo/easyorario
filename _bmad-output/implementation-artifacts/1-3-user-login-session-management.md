@@ -432,6 +432,7 @@ Claude Opus 4.6
 ### Change Log
 
 - 2026-02-17: Implemented story 1.3 — login, logout, session management, auth guards, dashboard placeholder
+- 2026-02-17: Addressed 18 adversarial code review findings — auth redirect, session fixation, email normalization, structlog logging, anchored exclude patterns, argon2 rehash, requires_role fail-closed, test coverage gaps
 
 ### File List
 
