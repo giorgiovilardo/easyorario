@@ -1,6 +1,6 @@
 # Story 2.1: Create New Timetable
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -24,51 +24,51 @@ so that I have a timetable workspace to define scheduling constraints.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create Timetable model and Alembic migration (AC: #3)
-  - [ ] 1.1 Create `easyorario/models/timetable.py` — Timetable ORM model with UUID PK, class_identifier (String), school_year (String), weekly_hours (Integer), subjects (JSON), teachers (JSON), status (String, default "draft"), owner_id (FK → users.id), created_at
-  - [ ] 1.2 Add relationship: `Timetable.owner` → User, `User.timetables` → list[Timetable]
-  - [ ] 1.3 Export Timetable from `easyorario/models/__init__.py`
-  - [ ] 1.4 Generate Alembic migration: `just db-revision "create timetables table"`
-  - [ ] 1.5 Verify migration applies cleanly: `just db-migrate`
+- [x] Task 1: Create Timetable model and Alembic migration (AC: #3)
+  - [x] 1.1 Create `easyorario/models/timetable.py` — Timetable ORM model with UUID PK, class_identifier (String), school_year (String), weekly_hours (Integer), subjects (JSON), teachers (JSON), status (String, default "draft"), owner_id (FK → users.id), created_at
+  - [x] 1.2 Add relationship: `Timetable.owner` → User, `User.timetables` → list[Timetable]
+  - [x] 1.3 Export Timetable from `easyorario/models/__init__.py`
+  - [x] 1.4 Generate Alembic migration: `just db-revision "create timetables table"`
+  - [x] 1.5 Verify migration applies cleanly: `just db-migrate`
 
-- [ ] Task 2: Create TimetableRepository (AC: #2, #3)
-  - [ ] 2.1 Create `easyorario/repositories/timetable.py` — TimetableRepository extending `SQLAlchemyAsyncRepository[Timetable]`
-  - [ ] 2.2 Add `get_by_owner(owner_id: uuid.UUID) -> list[Timetable]` method for future dashboard use
-  - [ ] 2.3 Export from `easyorario/repositories/__init__.py`
+- [x] Task 2: Create TimetableRepository (AC: #2, #3)
+  - [x] 2.1 Create `easyorario/repositories/timetable.py` — TimetableRepository extending `SQLAlchemyAsyncRepository[Timetable]`
+  - [x] 2.2 Add `get_by_owner(owner_id: uuid.UUID) -> list[Timetable]` method for future dashboard use
+  - [x] 2.3 Export from `easyorario/repositories/__init__.py`
 
-- [ ] Task 3: Create TimetableService (AC: #2, #5)
-  - [ ] 3.1 Create `easyorario/services/timetable.py` — TimetableService with `create_timetable()` method
-  - [ ] 3.2 Validate required fields: class_identifier non-empty, weekly_hours ≥ 1, school_year non-empty
-  - [ ] 3.3 Accept subjects as list of strings, teachers as dict mapping subject → teacher name
-  - [ ] 3.4 Set status="draft", owner_id from authenticated user
-  - [ ] 3.5 Return created Timetable
+- [x] Task 3: Create TimetableService (AC: #2, #5)
+  - [x] 3.1 Create `easyorario/services/timetable.py` — TimetableService with `create_timetable()` method
+  - [x] 3.2 Validate required fields: class_identifier non-empty, weekly_hours ≥ 1, school_year non-empty
+  - [x] 3.3 Accept subjects as list of strings, teachers as dict mapping subject → teacher name
+  - [x] 3.4 Set status="draft", owner_id from authenticated user
+  - [x] 3.5 Return created Timetable
 
-- [ ] Task 4: Add domain exceptions and Italian messages (AC: #5)
-  - [ ] 4.1 Add `InvalidTimetableDataError` to `easyorario/exceptions.py` with error_key
-  - [ ] 4.2 Add Italian validation messages to `easyorario/i18n/errors.py`
+- [x] Task 4: Add domain exceptions and Italian messages (AC: #5)
+  - [x] 4.1 Add `InvalidTimetableDataError` to `easyorario/exceptions.py` with error_key
+  - [x] 4.2 Add Italian validation messages to `easyorario/i18n/errors.py`
 
-- [ ] Task 5: Update TimetableController with create form + POST handler (AC: #1, #2, #4, #5)
-  - [ ] 5.1 Replace stub `GET /orario/nuovo` with form rendering (keep `requires_responsible_professor` guard)
-  - [ ] 5.2 Add `POST /orario/nuovo` — parse form data, call TimetableService, redirect to `/orario/{id}/vincoli`
-  - [ ] 5.3 On validation error: re-render form with Italian error message and submitted values
-  - [ ] 5.4 Add stub `GET /orario/{timetable_id:uuid}/vincoli` route returning placeholder template (for redirect target)
+- [x] Task 5: Update TimetableController with create form + POST handler (AC: #1, #2, #4, #5)
+  - [x] 5.1 Replace stub `GET /orario/nuovo` with form rendering (keep `requires_responsible_professor` guard)
+  - [x] 5.2 Add `POST /orario/nuovo` — parse form data, call TimetableService, redirect to `/orario/{id}/vincoli`
+  - [x] 5.3 On validation error: re-render form with Italian error message and submitted values
+  - [x] 5.4 Add stub `GET /orario/{timetable_id:uuid}/vincoli` route returning placeholder template (for redirect target)
 
-- [ ] Task 6: Create timetable form template (AC: #1, #2, #5)
-  - [ ] 6.1 Replace `templates/pages/timetable_new.html` with create timetable form
-  - [ ] 6.2 Fields: class_identifier (text input), school_year (text input), weekly_hours (number input), subjects (textarea, one per line), teachers (textarea, format "Materia: Prof. Nome" per line)
-  - [ ] 6.3 All labels and placeholders in Italian
-  - [ ] 6.4 Use Oat UI form styling, CSRF token included
-  - [ ] 6.5 Create `templates/pages/timetable_constraints.html` stub (placeholder for redirect target)
+- [x] Task 6: Create timetable form template (AC: #1, #2, #5)
+  - [x] 6.1 Replace `templates/pages/timetable_new.html` with create timetable form
+  - [x] 6.2 Fields: class_identifier (text input), school_year (text input), weekly_hours (number input), subjects (textarea, one per line), teachers (textarea, format "Materia: Prof. Nome" per line)
+  - [x] 6.3 All labels and placeholders in Italian
+  - [x] 6.4 Use Oat UI form styling, CSRF token included
+  - [x] 6.5 Create `templates/pages/timetable_constraints.html` stub (placeholder for redirect target)
 
-- [ ] Task 7: Register DI providers in app.py (AC: #2)
-  - [ ] 7.1 Add `provide_timetable_repository` and `provide_timetable_service` DI functions
-  - [ ] 7.2 Register in `dependencies` dict in `create_app()`
+- [x] Task 7: Register DI providers in app.py (AC: #2)
+  - [x] 7.1 Add `provide_timetable_repository` and `provide_timetable_service` DI functions
+  - [x] 7.2 Register in `dependencies` dict in `create_app()`
 
-- [ ] Task 8: Write tests (AC: #1, #2, #3, #4, #5)
-  - [ ] 8.1 `tests/models/test_timetable.py`: model creation and field defaults
-  - [ ] 8.2 `tests/repositories/test_timetable_repository.py`: CRUD and get_by_owner
-  - [ ] 8.3 `tests/services/test_timetable.py`: create_timetable validation and happy path
-  - [ ] 8.4 `tests/controllers/test_timetable.py`: GET form, POST create, validation errors, 403 for Professor, redirect to vincoli
+- [x] Task 8: Write tests (AC: #1, #2, #3, #4, #5)
+  - [x] 8.1 `tests/models/test_timetable.py`: model creation and field defaults
+  - [x] 8.2 `tests/repositories/test_timetable_repository.py`: CRUD and get_by_owner
+  - [x] 8.3 `tests/services/test_timetable.py`: create_timetable validation and happy path
+  - [x] 8.4 `tests/controllers/test_timetable.py`: GET form, POST create, validation errors, 403 for Professor, redirect to vincoli
 
 ## Dev Notes
 
