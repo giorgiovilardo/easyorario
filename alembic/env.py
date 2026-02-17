@@ -14,6 +14,7 @@ from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from easyorario.models.base import Base
+from easyorario.models.user import User  # noqa: F401 - register model metadata
 
 config = context.config
 if config.config_file_name is not None:
