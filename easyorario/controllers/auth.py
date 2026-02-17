@@ -13,7 +13,7 @@ from easyorario.exceptions import (
     InvalidEmailError,
     PasswordTooShortError,
 )
-from easyorario.i18n.errors import ERRORS
+from easyorario.i18n.errors import MESSAGES
 from easyorario.services.auth import AuthService
 
 
@@ -44,7 +44,7 @@ class AuthController(Controller):
         if data.password != data.password_confirm:
             return Template(
                 "pages/register.html",
-                context={"error": ERRORS["password_mismatch"], "email_value": data.email},
+                context={"error": MESSAGES["password_mismatch"], "email_value": data.email},
             )
 
         try:
@@ -53,13 +53,13 @@ class AuthController(Controller):
         except (EmailAlreadyTakenError, PasswordTooShortError, InvalidEmailError) as exc:
             return Template(
                 "pages/register.html",
-                context={"error": ERRORS[exc.error_key], "email_value": data.email},
+                context={"error": MESSAGES[exc.error_key], "email_value": data.email},
             )
 
     @get("/accedi")
     async def show_login(self, msg: str | None = None) -> Template:
         """Render the login placeholder page."""
         context: dict[str, str] = {}
-        if msg and msg in ERRORS:
-            context["success"] = ERRORS[msg]
+        if msg and msg in MESSAGES:
+            context["success"] = MESSAGES[msg]
         return Template(template_name="pages/login.html", context=context)

@@ -37,7 +37,10 @@ class AuthService:
 
     async def register_user(self, email: str, password: str, role: str = "responsible_professor") -> User:
         """Register a new user after validating input."""
-        if "@" not in email or "." not in email.split("@")[-1]:
+        if "@" not in email:
+            raise InvalidEmailError
+        local, domain = email.rsplit("@", 1)
+        if not local or not domain or "." not in domain or domain.startswith(".") or domain.endswith("."):
             raise InvalidEmailError
 
         if len(password) < MIN_PASSWORD_LENGTH:
@@ -51,6 +54,4 @@ class AuthService:
             hashed_password=hash_password(password),
             role=role,
         )
-        self.user_repo.session.add(user)
-        await self.user_repo.session.flush()
-        return user
+        return await self.user_repo.add(user)

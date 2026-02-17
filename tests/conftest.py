@@ -14,7 +14,7 @@ TEST_DB_URL = "sqlite+aiosqlite://"
 @pytest.fixture
 async def client():
     """Async test client with in-memory database."""
-    app = create_app(database_url=TEST_DB_URL, create_all=True)
+    app = create_app(database_url=TEST_DB_URL, create_all=True, static_pool=True)
     async with AsyncTestClient(app=app) as client:
         yield client
     # Dispose the engine to prevent leaked connection warnings.

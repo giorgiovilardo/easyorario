@@ -23,9 +23,3 @@ class InvalidEmailError(EasyorarioError):
     """Raised when email format is invalid."""
 
     error_key = "invalid_email"
-
-
-class PasswordMismatchError(EasyorarioError):
-    """Raised when password and confirmation don't match."""
-
-    error_key = "password_mismatch"
