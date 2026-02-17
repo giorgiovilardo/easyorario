@@ -14,3 +14,16 @@ async def test_unauthorized_role_returns_403_with_italian_message(authenticated_
     assert response.status_code == 403
     assert "Accesso negato" in response.text
     assert "permessi" in response.text
+
+
+async def test_responsible_professor_can_access_guarded_route(authenticated_client):
+    """AC #3: Responsible Professor can access RP-only routes."""
+    response = await authenticated_client.get("/orario/nuovo")
+    assert response.status_code == 200
+
+
+async def test_403_page_has_link_back_to_dashboard(authenticated_professor_client):
+    """403 error page provides a link back to /dashboard."""
+    response = await authenticated_professor_client.get("/orario/nuovo")
+    assert response.status_code == 403
+    assert 'href="/dashboard"' in response.text
