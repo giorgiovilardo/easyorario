@@ -32,7 +32,7 @@ class TimetableService:
         if not class_identifier:
             raise InvalidTimetableDataError("class_identifier_required")
         if len(class_identifier) > 255:
-            raise InvalidTimetableDataError("class_identifier_required")
+            raise InvalidTimetableDataError("class_identifier_too_long")
 
         school_year = school_year.strip()
         if not school_year:

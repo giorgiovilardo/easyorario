@@ -134,6 +134,54 @@ async def test_create_timetable_with_no_subjects_raises(timetable_service: Timet
     assert exc_info.value.error_key == "subjects_required"
 
 
+async def test_create_timetable_with_class_identifier_over_255_chars_raises(
+    timetable_service: TimetableService, owner: User
+) -> None:
+    """class_identifier exceeding 255 characters raises InvalidTimetableDataError."""
+    with pytest.raises(InvalidTimetableDataError) as exc_info:
+        await timetable_service.create_timetable(
+            owner_id=owner.id,
+            class_identifier="A" * 256,
+            school_year="2026/2027",
+            weekly_hours_raw="30",
+            subjects_raw="Matematica",
+            teachers_raw="",
+        )
+    assert exc_info.value.error_key == "class_identifier_too_long"
+
+
+async def test_create_timetable_with_invalid_teacher_format_raises(
+    timetable_service: TimetableService, owner: User
+) -> None:
+    """Teacher line without colon raises InvalidTimetableDataError."""
+    with pytest.raises(InvalidTimetableDataError) as exc_info:
+        await timetable_service.create_timetable(
+            owner_id=owner.id,
+            class_identifier="3A",
+            school_year="2026/2027",
+            weekly_hours_raw="30",
+            subjects_raw="Matematica",
+            teachers_raw="Matematica Prof. Rossi",
+        )
+    assert exc_info.value.error_key == "teachers_format_invalid"
+
+
+async def test_create_timetable_with_empty_teacher_name_raises(
+    timetable_service: TimetableService, owner: User
+) -> None:
+    """Teacher line with empty name after colon raises InvalidTimetableDataError."""
+    with pytest.raises(InvalidTimetableDataError) as exc_info:
+        await timetable_service.create_timetable(
+            owner_id=owner.id,
+            class_identifier="3A",
+            school_year="2026/2027",
+            weekly_hours_raw="30",
+            subjects_raw="Matematica",
+            teachers_raw="Matematica:",
+        )
+    assert exc_info.value.error_key == "teachers_format_invalid"
+
+
 async def test_create_timetable_with_weekly_hours_over_60_raises(
     timetable_service: TimetableService, owner: User
 ) -> None:

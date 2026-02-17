@@ -31,6 +31,18 @@ async def test_get_nuovo_as_professor_returns_403(authenticated_professor_client
     assert response.status_code == 403
 
 
+async def test_post_nuovo_as_professor_returns_403(authenticated_professor_client, timetable_data) -> None:
+    """AC #4: Professor (not Responsible) cannot POST the create form."""
+    await authenticated_professor_client.get("/accedi")
+    csrf_token = _get_csrf_token(authenticated_professor_client)
+    response = await authenticated_professor_client.post(
+        "/orario/nuovo",
+        data=timetable_data,
+        headers={"x-csrftoken": csrf_token},
+    )
+    assert response.status_code == 403
+
+
 async def test_post_nuovo_with_valid_data_creates_timetable_and_redirects(authenticated_client, timetable_data) -> None:
     """AC #2: Valid form data creates timetable and redirects to /orario/{id}/vincoli."""
     # GET the form first (mirrors real user flow; also primes the StaticPool connection)
