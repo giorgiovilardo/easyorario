@@ -1,15 +1,11 @@
 {% extends "base.html" %}
 {% block title %}Accesso negato - Easyorario{% endblock %}
 {% block content %}
-<div class="container">
-  <div class="row">
-    <div class="col-6 offset-3">
-      <h1>Accesso negato</h1>
-      <div role="alert" data-variant="error">
-        {{ error }}
-      </div>
-      <a href="/dashboard">Torna alla dashboard</a>
-    </div>
+<div class="container text-center" style="--container-max: 480px;">
+  <h1>Accesso negato</h1>
+  <div role="alert" data-variant="error">
+    {{ error }}
   </div>
+  <a href="/dashboard" class="button outline mt-4">Torna alla dashboard</a>
 </div>
 {% endblock %}

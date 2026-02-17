@@ -1,32 +1,30 @@
 {% extends "base.html" %}
 {% block title %}Accedi - Easyorario{% endblock %}
 {% block content %}
-<div class="container">
-  <div class="row">
-    <div class="col-6 offset-3">
-      <h1>Accedi</h1>
+<div class="container" style="--container-max: 420px;">
+  <h1 class="text-center">Accedi</h1>
 
-      {% include "partials/flash_messages.html" %}
+  {% include "partials/flash_messages.html" %}
 
-      <form method="post" action="/accedi">
-        {{ csrf_input | safe }}
+  <article class="card">
+    <form method="post" action="/accedi">
+      {{ csrf_input | safe }}
 
-        <label data-field>
-          Email
-          <input type="email" name="email" required placeholder="nome@esempio.it"
-                 value="{{ email_value | default('') }}">
-        </label>
+      <label data-field>
+        Email
+        <input type="email" name="email" required placeholder="nome@esempio.it"
+               value="{{ email_value | default('') }}">
+      </label>
 
-        <label data-field>
-          Password
-          <input type="password" name="password" required>
-        </label>
+      <label data-field>
+        Password
+        <input type="password" name="password" required>
+      </label>
 
-        <button type="submit">Accedi</button>
-      </form>
+      <button type="submit" class="w-100">Accedi</button>
+    </form>
+  </article>
 
-      <p>Non hai un account? <a href="/registrati">Registrati</a></p>
-    </div>
-  </div>
+  <p class="text-center">Non hai un account? <a href="/registrati">Registrati</a></p>
 </div>
 {% endblock %}
