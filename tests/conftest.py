@@ -34,3 +34,16 @@ async def db_session():
         yield session
         await session.close()
     await engine.dispose()
+
+
+@pytest.fixture
+async def registered_user(client):
+    """Register a user via the API, returning credentials dict."""
+    await client.get("/registrati")
+    csrf = client.cookies.get("csrftoken", "")
+    await client.post(
+        "/registrati",
+        data={"email": "test@example.com", "password": "password123", "password_confirm": "password123"},
+        headers={"x-csrftoken": csrf},
+    )
+    return {"email": "test@example.com", "password": "password123"}
