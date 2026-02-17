@@ -1,15 +1,17 @@
-"""Authentication controller for registration endpoints."""
+"""Authentication controller for registration, login, and logout."""
 
 from dataclasses import dataclass
 from typing import Annotated
 
-from litestar import Controller, get, post
+import structlog
+from litestar import Controller, Request, get, post
 from litestar.enums import RequestEncodingType
 from litestar.params import Body
 from litestar.response import Redirect, Template
 
 from easyorario.exceptions import (
     EmailAlreadyTakenError,
+    InvalidCredentialsError,
     InvalidEmailError,
     PasswordTooShortError,
 )
@@ -24,8 +26,14 @@ class RegisterFormData:
     password_confirm: str
 
 
+@dataclass
+class LoginFormData:
+    email: str
+    password: str
+
+
 class AuthController(Controller):
-    """Handles user registration and login placeholder."""
+    """Handles user registration, login, and logout."""
 
     path = ""
 
@@ -58,8 +66,33 @@ class AuthController(Controller):
 
     @get("/accedi")
     async def show_login(self, msg: str | None = None) -> Template:
-        """Render the login placeholder page."""
+        """Render the login form."""
         context: dict[str, str] = {}
         if msg and msg in MESSAGES:
             context["success"] = MESSAGES[msg]
         return Template(template_name="pages/login.html", context=context)
+
+    @post("/accedi")
+    async def login(
+        self,
+        request: Request,
+        data: Annotated[LoginFormData, Body(media_type=RequestEncodingType.URL_ENCODED)],
+        auth_service: AuthService,
+    ) -> Template | Redirect:
+        """Process login form submission."""
+        try:
+            user = await auth_service.authenticate_user(data.email, data.password)
+            request.clear_session()
+            request.set_session({"user_id": str(user.id)})
+            return Redirect(path="/dashboard")
+        except InvalidCredentialsError:
+            return Template(
+                "pages/login.html",
+                context={"error": MESSAGES["invalid_credentials"], "email_value": data.email},
+            )
+
+    @post("/esci")
+    async def logout(self, request: Request) -> Redirect:
+        """Clear session and redirect to login."""
+        request.clear_session()
+        return Redirect(path="/accedi?msg=logout_success")
