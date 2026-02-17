@@ -2,7 +2,9 @@
 
 import uuid
 
+import pytest
 from sqlalchemy import inspect
+from sqlalchemy.exc import IntegrityError
 
 from easyorario.models.user import User
 
@@ -43,8 +45,5 @@ async def test_user_model_email_unique_constraint(db_session):
 
     user2 = User(email="dup@example.com", hashed_password="hashed2")
     db_session.add(user2)
-    try:
+    with pytest.raises(IntegrityError, match="(?i)unique"):
         await db_session.flush()
-        raise AssertionError("Expected IntegrityError for duplicate email")
-    except Exception as exc:
-        assert "UNIQUE constraint failed" in str(exc) or "unique" in str(exc).lower()

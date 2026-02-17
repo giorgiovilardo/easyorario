@@ -18,7 +18,6 @@ from litestar.logging import StructLoggingConfig
 from litestar.static_files import create_static_files_router
 from litestar.template.config import TemplateConfig
 from sqlalchemy import event
-from sqlalchemy.engine import Engine
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.pool import StaticPool
 
@@ -33,7 +32,6 @@ from easyorario.services.auth import AuthService
 _BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-@event.listens_for(Engine, "connect")
 def _set_sqlite_pragmas(dbapi_connection, connection_record) -> None:
     cursor = dbapi_connection.cursor()
     cursor.execute("PRAGMA journal_mode=WAL")
@@ -67,6 +65,8 @@ def create_app(database_url: str | None = None, create_all: bool = False, static
             render_as_batch=True,
         ),
     )
+
+    event.listen(db_config.get_engine().sync_engine, "connect", _set_sqlite_pragmas)
 
     csrf_config = CSRFConfig(
         secret=settings.csrf_secret,
