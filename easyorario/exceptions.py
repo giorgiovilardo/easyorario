@@ -23,3 +23,9 @@ class InvalidEmailError(EasyorarioError):
     """Raised when email format is invalid."""
 
     error_key = "invalid_email"
+
+
+class InvalidCredentialsError(EasyorarioError):
+    """Raised when login credentials are invalid."""
+
+    error_key = "invalid_credentials"

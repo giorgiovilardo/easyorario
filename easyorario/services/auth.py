@@ -5,6 +5,7 @@ from argon2.exceptions import VerifyMismatchError
 
 from easyorario.exceptions import (
     EmailAlreadyTakenError,
+    InvalidCredentialsError,
     InvalidEmailError,
     PasswordTooShortError,
 )
@@ -55,3 +56,16 @@ class AuthService:
             role=role,
         )
         return await self.user_repo.add(user)
+
+    async def authenticate_user(self, email: str, password: str) -> User:
+        """Verify credentials and return user, or raise InvalidCredentialsError."""
+        email = _normalize_email(email)
+        user = await self.user_repo.get_by_email(email)
+        if not user or not verify_password(user.hashed_password, password):
+            await _log.awarning("login_failed", email=email)
+            raise InvalidCredentialsError
+        if _ph.check_needs_rehash(user.hashed_password):
+            user.hashed_password = hash_password(password)
+            await _log.ainfo("password_rehashed", email=email)
+        await _log.ainfo("login_succeeded", email=email)
+        return user
