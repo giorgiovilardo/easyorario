@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from easyorario.guards.auth import requires_login, requires_role
+from easyorario.guards.auth import requires_login, requires_responsible_professor, requires_role
 
 
 def test_requires_login_raises_when_user_is_none():
@@ -64,6 +64,32 @@ def test_requires_role_raises_when_no_required_role_in_opt():
 
     with pytest.raises(ImproperlyConfiguredException):
         requires_role(connection, handler)
+
+
+# Unit tests for requires_responsible_professor guard
+
+
+def test_requires_responsible_professor_with_professor_role_raises():
+    """requires_responsible_professor raises for professor role."""
+    from litestar.exceptions import NotAuthorizedException
+
+    connection = MagicMock()
+    connection.user = MagicMock()
+    connection.user.role = "professor"
+    handler = MagicMock()
+
+    with pytest.raises(NotAuthorizedException):
+        requires_responsible_professor(connection, handler)
+
+
+def test_requires_responsible_professor_with_correct_role_succeeds():
+    """requires_responsible_professor passes for responsible_professor role."""
+    connection = MagicMock()
+    connection.user = MagicMock()
+    connection.user.role = "responsible_professor"
+    handler = MagicMock()
+
+    requires_responsible_professor(connection, handler)  # should not raise
 
 
 # Integration tests: guard behavior via SessionAuth + exception handler

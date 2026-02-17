@@ -9,4 +9,5 @@ MESSAGES: dict[str, str] = {
     "invalid_credentials": "Email o password non validi",
     "login_required": "Effettua l'accesso per continuare",
     "logout_success": "Disconnessione effettuata",
+    "forbidden": "Non hai i permessi per accedere a questa risorsa",
 }
