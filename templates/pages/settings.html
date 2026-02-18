@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Impostazioni LLM — Easyorario{% endblock %}
+
+{% block content %}
+<div class="container mt-6">
+    <div class="hstack gap-2 mb-4">
+        <h2>Configurazione Endpoint LLM</h2>
+        {% if has_config %}
+            <span class="badge success">Configurazione attiva</span>
+        {% endif %}
+    </div>
+
+    {% if error %}
+        <div role="alert" data-variant="danger">{{ error }}</div>
+    {% endif %}
+
+    {% if success %}
+        <div role="alert" data-variant="success">{{ success }}</div>
+    {% endif %}
+
+    <form method="post">
+        {{ csrf_input | safe }}
+
+        <label data-field>
+            URL Base
+            <input type="text" name="base_url" placeholder="https://api.openai.com/v1" value="{{ base_url }}" required>
+        </label>
+
+        <label data-field>
+            Chiave API
+            <input type="password" name="api_key" placeholder="sk-..."{% if not has_config %} required{% endif %}>
+            {% if has_config %}
+                <small data-hint>La chiave non viene mostrata per sicurezza. Lascia vuoto per mantenere quella attuale.</small>
+            {% endif %}
+        </label>
+
+        <label data-field>
+            Identificativo Modello
+            <input type="text" name="model_id" placeholder="gpt-4o" value="{{ model_id }}">
+        </label>
+
+        <button type="submit">Salva configurazione</button>
+    </form>
+</div>
+{% endblock %}

@@ -96,7 +96,7 @@ class TestLLMServiceConnectivity:
         monkeypatch.setattr(httpx.AsyncClient, "get", mock_get)
 
         service = LLMService()
-        await service.test_connectivity("https://api.openai.com/", "sk-valid", "gpt-4o")
+        await service.test_connectivity("https://api.openai.com/v1/", "sk-valid", "gpt-4o")
         assert captured_url == "https://api.openai.com/v1/models"
 
 
