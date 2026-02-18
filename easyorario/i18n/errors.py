@@ -16,4 +16,6 @@ MESSAGES: dict[str, str] = {
     "weekly_hours_invalid": "Le ore settimanali devono essere un numero tra 1 e 60",
     "subjects_required": "Inserire almeno una materia",
     "teachers_format_invalid": "Formato non valido per i docenti. Usare 'Materia: Nome Docente' per ogni riga",
+    "constraint_text_required": "Il testo del vincolo è obbligatorio",
+    "constraint_text_too_long": "Il testo del vincolo non può superare 1000 caratteri",
 }
