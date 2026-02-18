@@ -1,8 +1,48 @@
 {% extends "base.html" %}
-{% block title %}Vincoli - Easyorario{% endblock %}
+{% block title %}Vincoli — {{ timetable.class_identifier }} — Easyorario{% endblock %}
 {% block content %}
-<div class="container">
-  <h1>Vincoli</h1>
-  <div role="alert">Questa funzionalità sarà disponibile presto.</div>
+<div class="container" style="--container-max: 640px;">
+  <h1>Vincoli — {{ timetable.class_identifier }} ({{ timetable.school_year }})</h1>
+
+  {% include "partials/flash_messages.html" %}
+
+  <article class="card">
+    <form method="post" action="/orario/{{ timetable.id }}/vincoli">
+      {{ csrf_input | safe }}
+      <label data-field>
+        Nuovo vincolo
+        <textarea name="text" rows="3" maxlength="1000" minlength="1" required
+                  placeholder="Es: Prof. Rossi non può insegnare il lunedì mattina"></textarea>
+      </label>
+      <button type="submit" class="w-100">Aggiungi vincolo</button>
+    </form>
+  </article>
+
+  {% if constraints %}
+  <section>
+    <h2>Vincoli inseriti</h2>
+    {% for constraint in constraints %}
+    <article class="card">
+      <p>
+        {% if constraint.status == "pending" %}
+        <span badge>in attesa</span>
+        {% elif constraint.status == "verified" %}
+        <span badge data-variant="success">verificato</span>
+        {% elif constraint.status == "rejected" %}
+        <span badge data-variant="error">rifiutato</span>
+        {% endif %}
+        {{ constraint.natural_language_text }}
+      </p>
+    </article>
+    {% endfor %}
+  </section>
+
+  {% if has_pending %}
+  <a href="/orario/{{ timetable.id }}/vincoli/verifica" class="button outline w-100">Verifica vincoli</a>
+  {% endif %}
+
+  {% else %}
+  <p class="text-lighter">Nessun vincolo inserito.</p>
+  {% endif %}
 </div>
 {% endblock %}
