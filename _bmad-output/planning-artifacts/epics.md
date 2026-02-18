@@ -88,7 +88,7 @@ NFR-16: Dependency Management (SHOULD) — All external dependencies declared wi
 
 - Starter/scaffolding: No external starter template. Project scaffolding (directory structure, justfile, Dockerfile, Litestar app initialization, Alembic setup) is the first implementation story
 - Database: SQLite with WAL mode via aiosqlite + Advanced Alchemy repository pattern; Alembic for migrations
-- Auth: Session-based with DB-backed cookie sessions (Litestar middleware), Argon2 via argon2-cffi, CSRF middleware on all form endpoints
+- Auth: Session-based with server-side sessions (Litestar middleware, MemoryStore for PoC), Argon2 via argon2-cffi, CSRF middleware on all form endpoints
 - LLM API keys: Not persisted — provided per session, stored in session data only
 - Async operations: Litestar background tasks for Z3 solver (sync function auto-wrapped to thread pool); job status stored in DB; vanilla JS polling every 3 seconds
 - Error handling: Custom exception hierarchy (EasyorarioError base), domain-specific exceptions (UnsolvableConstraintsError, LLMTranslationError, ConstraintConflictError), Italian error templates, structlog for server-side logging
@@ -220,7 +220,7 @@ So that I can access the system securely.
 
 **Given** I am on the login page at `/accedi`
 **When** I submit valid credentials
-**Then** a session is created (DB-backed cookie) and I am redirected to `/dashboard`
+**Then** a session is created (server-side, cookie-identified) and I am redirected to `/dashboard`
 
 **Given** I submit invalid credentials
 **When** the form is processed

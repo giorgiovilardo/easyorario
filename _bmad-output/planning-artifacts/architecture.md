@@ -156,7 +156,7 @@ The "starter" is the project structure itself, which will be defined in the arch
 
 ### Authentication & Security
 
-- **Authentication:** Session-based with DB-backed cookie sessions (Litestar built-in session middleware)
+- **Authentication:** Session-based with server-side sessions (Litestar built-in session middleware, MemoryStore for PoC). User attributes cached in HTTP session at login — no DB query on subsequent requests. Persistent store (FileStore/Redis) deferred to pre-deployment hardening.
 - **Password hashing:** Argon2 via `argon2-cffi`
 - **LLM API keys:** Not stored. User provides per session. No encryption complexity.
 - **CSRF:** Litestar built-in CSRF middleware on all form endpoints

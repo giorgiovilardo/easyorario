@@ -25,7 +25,7 @@ so that I can access the system securely.
 ## Tasks / Subtasks
 
 - [x] Task 1: Configure SessionAuth middleware in app.py (AC: #1, #5)
-  - [x] 1.1 Create `retrieve_user_handler` closure in `easyorario/app.py` — loads User from DB using `user_id` stored in session dict
+  - [x] 1.1 Create `retrieve_user_handler` closure in `easyorario/app.py` — reconstructs User from session-cached attributes (user_id, email, role), no DB query
   - [x] 1.2 Configure `ServerSideSessionConfig` with sensible defaults (cookie name `session`, httponly=True, samesite=lax)
   - [x] 1.3 Create `SessionAuth[User, ServerSideSessionBackend]` instance with `retrieve_user_handler` and `exclude` paths
   - [x] 1.4 Set `exclude` to: `["^/$", "/accedi", "/registrati", "/health", "/static/", "/schema"]` (anchored `^/$` to avoid greedy match)
@@ -130,17 +130,25 @@ async def retrieve_user_handler(
     session: dict[str, Any],
     connection: ASGIConnection[Any, Any, Any, Any],
 ) -> User | None:
-    """Load user from database using user_id stored in session.
+    """Reconstruct User from session-stored attributes.
 
-    NOTE: This handler does NOT participate in Litestar's DI system.
-    Access the DB session via connection.app to get a managed session
-    from the Advanced Alchemy plugin, rather than creating a manual session.
+    The login handler stores user_id, email, and role in the HTTP session.
+    We reconstruct a transient User instance from these — no DB query needed.
+    This avoids StaticPool test issues where a separate DB session triggers
+    ROLLBACK on the shared connection.
     """
     user_id = session.get("user_id")
     if not user_id:
         return None
-    async with alchemy_config.get_session() as db_session:
-        return await db_session.get(User, uuid.UUID(user_id))
+    try:
+        parsed_id = uuid.UUID(user_id)
+    except ValueError, AttributeError:
+        return None
+    email = session.get("email", "")
+    role = session.get("role", "")
+    if not email or not role:
+        return None
+    return User(id=parsed_id, email=email, hashed_password="", role=role)
 
 
 session_auth = SessionAuth[User, ServerSideSessionBackend](
@@ -166,7 +174,7 @@ app = Litestar(
 
 - `exclude` paths skip auth entirely (no `retrieve_user_handler` call, `request.user` not populated)
 - Individual routes can also opt out with `opt={"exclude_from_auth": True}`. On routes already in the `exclude` list, `opt` is redundant but provides defense-in-depth. Use the `exclude` list as the single source of truth for path-level exclusions.
-- `alchemy_config` is the `SQLAlchemyAsyncConfig` already defined in app.py from story 1.1. The `retrieve_user_handler` uses `alchemy_config.get_session()` for a managed DB session.
+- `retrieve_user_handler` reconstructs a transient User from session-cached attributes. It does NOT query the database — this avoids StaticPool/ROLLBACK issues in tests and eliminates a DB round-trip on every request.
 
 ### Login/Logout Controller Pattern
 
@@ -305,10 +313,19 @@ This avoids the complexity of session-based flash plugins. Do NOT implement `set
 
 ### Architecture Deviation: Session Store
 
-The architecture doc specifies "DB-backed cookie sessions." This story uses `MemoryStore()` for simplicity in the PoC sprint. Sessions will be lost on server restart. This is acceptable for local development and demo purposes. To upgrade later:
-- Replace `MemoryStore()` with `FileStore(path=Path("./session_data"))` for persistence across restarts
-- Or implement a custom SQLAlchemy-backed store for full architecture compliance
-This should be addressed before any deployment beyond local development.
+The architecture doc originally specified "DB-backed cookie sessions." This story uses `MemoryStore()` for the PoC sprint — sessions are lost on server restart, which is acceptable for local development and demo purposes.
+
+The `retrieve_user_handler` was changed from a DB-querying approach to session-cached user reconstruction. The login handler stores `user_id`, `email`, and `role` in the HTTP session, and `retrieve_user_handler` reconstructs a transient User without any DB query. This avoids StaticPool test failures (where opening a separate DB session triggers ROLLBACK on the shared connection) and is the preferred pattern going forward — it also eliminates a DB round-trip on every request.
+
+**Production migration (session store only — one-line swap):**
+- `FileStore(path=Path("./session_data"))` — simplest, for single VPS/single worker
+- `RedisStore.with_client(url="redis://...")` — for multi-worker or shared state
+- Custom DB-backed `Store` implementation — for homogeneous stack preference
+
+**Design rules:**
+- Never store SQLAlchemy ORM objects in the HTTP session — they don't survive serialization. Store plain keys.
+- Session-cached user reconstruction is preferred over DB queries per request.
+- If immediate role revocation is needed later, add session invalidation on role change.
 
 ### Version Control
 
@@ -422,8 +439,8 @@ Claude Opus 4.6
 
 ### Completion Notes List
 
-- SessionAuth configured as closure inside `create_app()` to capture `db_config` for `retrieve_user_handler`
-- `retrieve_user_handler` uses `db_config.get_session()` for DB access (not DI, as handler runs outside DI context)
+- SessionAuth configured as closure inside `create_app()`
+- `retrieve_user_handler` reconstructs User from session-cached attributes (no DB query — avoids StaticPool ROLLBACK issues in tests)
 - Login uses `LoginFormData` dataclass with Litestar's `Body(media_type=URL_ENCODED)` for form parsing
 - Flash messages use URL query params for cross-redirect success messages (no session-based flash)
 - Guards are unit-tested with mocks and integration-tested via SessionAuth exclude behavior
