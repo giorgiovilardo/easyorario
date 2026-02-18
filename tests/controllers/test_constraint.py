@@ -84,20 +84,38 @@ async def test_get_vincoli_as_professor_returns_403(authenticated_professor_clie
     assert response.status_code == 403
 
 
-async def test_get_vincoli_for_non_owned_timetable_returns_403(
-    authenticated_client, authenticated_professor_client, timetable_data
-):
+async def test_get_vincoli_for_non_owned_timetable_returns_403(authenticated_client, timetable_data):
     """AC #6: Accessing another user's timetable returns 403.
 
-    We create a timetable as the RP user, then create a second RP user and try to access it.
-    Since we can't easily have two RP users, we verify the ownership guard by using a professor.
-    The professor gets 403 from the role guard, which is the correct behavior.
+    Create timetable as user A, then logout, register/login as user B (also RP),
+    and try to access user A's timetable.
     """
-    # This is covered by the professor test above.
-    # For a true ownership test, we'd need two RP users sharing a client.
-    # The guard chain: requires_responsible_professor -> ownership check.
-    # We test the role guard (professor -> 403) and trust ownership check unit tests.
-    pass
+    vincoli_url = await _create_timetable(authenticated_client, timetable_data)
+
+    # Logout user A
+    csrf = _get_csrf_token(authenticated_client)
+    await authenticated_client.post("/esci", headers={"x-csrftoken": csrf}, follow_redirects=False)
+
+    # Register and login as user B (also RP)
+    await authenticated_client.get("/registrati")
+    csrf = _get_csrf_token(authenticated_client)
+    await authenticated_client.post(
+        "/registrati",
+        data={"email": "other@example.com", "password": "password123", "password_confirm": "password123"},
+        headers={"x-csrftoken": csrf},
+    )
+    await authenticated_client.get("/accedi")
+    csrf = _get_csrf_token(authenticated_client)
+    await authenticated_client.post(
+        "/accedi",
+        data={"email": "other@example.com", "password": "password123"},
+        headers={"x-csrftoken": csrf},
+        follow_redirects=False,
+    )
+
+    # Try to access user A's timetable
+    response = await authenticated_client.get(vincoli_url)
+    assert response.status_code == 403
 
 
 async def test_get_vincoli_shows_verifica_button_when_pending(authenticated_client, timetable_data):
