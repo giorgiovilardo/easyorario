@@ -7,6 +7,8 @@ from sqlalchemy.pool import StaticPool
 
 from easyorario.app import create_app
 from easyorario.models.base import Base
+from easyorario.models.timetable import Timetable
+from easyorario.models.user import User
 
 TEST_DB_URL = "sqlite+aiosqlite://"
 
@@ -106,3 +108,28 @@ async def authenticated_professor_client(client, professor_user):
     """Test client logged in as a Professor (not Responsible Professor)."""
     await _login(client, professor_user["email"], professor_user["password"])
     return client
+
+
+@pytest.fixture
+async def db_user(db_session: AsyncSession) -> User:
+    """A Responsible Professor user for model/repo/service tests."""
+    user = User(email="owner@example.com", hashed_password="x", role="responsible_professor")
+    db_session.add(user)
+    await db_session.flush()
+    return user
+
+
+@pytest.fixture
+async def db_timetable(db_session: AsyncSession, db_user: User) -> Timetable:
+    """A draft timetable owned by db_user, for model/repo/service tests."""
+    tt = Timetable(
+        class_identifier="3A",
+        school_year="2025-2026",
+        weekly_hours=30,
+        subjects=["Matematica"],
+        teachers={"Matematica": "Prof. Rossi"},
+        owner_id=db_user.id,
+    )
+    db_session.add(tt)
+    await db_session.flush()
+    return tt

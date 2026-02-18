@@ -3,7 +3,6 @@
 from dataclasses import dataclass
 from typing import Annotated
 
-import structlog
 from litestar import Controller, Request, get, post
 from litestar.enums import RequestEncodingType
 from litestar.params import Body
@@ -13,8 +12,6 @@ from easyorario.exceptions import InvalidTimetableDataError
 from easyorario.guards.auth import requires_responsible_professor
 from easyorario.i18n.errors import MESSAGES
 from easyorario.services.timetable import TimetableService
-
-_log = structlog.get_logger()
 
 
 @dataclass
