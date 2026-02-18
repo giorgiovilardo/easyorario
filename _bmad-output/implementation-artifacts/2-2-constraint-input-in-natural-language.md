@@ -1,6 +1,6 @@
 # Story 2.2: Constraint Input in Natural Language
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -28,55 +28,55 @@ so that I can define the rules for timetable generation without technical syntax
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create Constraint model and Alembic migration (AC: #3)
-  - [ ] 1.1 Create `easyorario/models/constraint.py` -- Constraint ORM model with UUID PK, timetable_id (FK -> timetables.id, CASCADE), natural_language_text (String(1000)), formal_representation (JSON, nullable), status (String(20), default "pending"), created_at
-  - [ ] 1.2 Add relationship: `Constraint.timetable` -> Timetable, `Timetable.constraints` -> list[Constraint]
-  - [ ] 1.3 Export Constraint from `easyorario/models/__init__.py`
-  - [ ] 1.4 Generate Alembic migration: `just db-revision "create constraints table"`
-  - [ ] 1.5 Verify migration applies cleanly: `just db-migrate`
+- [x] Task 1: Create Constraint model and Alembic migration (AC: #3)
+  - [x] 1.1 Create `easyorario/models/constraint.py` -- Constraint ORM model with UUID PK, timetable_id (FK -> timetables.id, CASCADE), natural_language_text (String(1000)), formal_representation (JSON, nullable), status (String(20), default "pending"), created_at
+  - [x] 1.2 Add relationship: `Constraint.timetable` -> Timetable, `Timetable.constraints` -> list[Constraint]
+  - [x] 1.3 Export Constraint from `easyorario/models/__init__.py`
+  - [x] 1.4 Generate Alembic migration: `just db-revision "create constraints table"`
+  - [x] 1.5 Verify migration applies cleanly: `just db-migrate`
 
-- [ ] Task 2: Create ConstraintRepository (AC: #1, #2, #3)
-  - [ ] 2.1 Create `easyorario/repositories/constraint.py` -- ConstraintRepository extending `SQLAlchemyAsyncRepository[Constraint]`
-  - [ ] 2.2 Add `get_by_timetable(timetable_id: uuid.UUID) -> list[Constraint]` method ordered by created_at ascending
-  - [ ] 2.3 Export from `easyorario/repositories/__init__.py`
+- [x] Task 2: Create ConstraintRepository (AC: #1, #2, #3)
+  - [x] 2.1 Create `easyorario/repositories/constraint.py` -- ConstraintRepository extending `SQLAlchemyAsyncRepository[Constraint]`
+  - [x] 2.2 Add `get_by_timetable(timetable_id: uuid.UUID) -> list[Constraint]` method ordered by created_at ascending
+  - [x] 2.3 Export from `easyorario/repositories/__init__.py`
 
-- [ ] Task 3: Create ConstraintService (AC: #1, #2, #4, #7)
-  - [ ] 3.1 Create `easyorario/services/constraint.py` -- ConstraintService with `add_constraint()` and `list_constraints()` methods
-  - [ ] 3.2 `add_constraint(timetable_id, natural_language_text)`: validate text non-empty after strip, max 1000 chars; create Constraint with status="pending"
-  - [ ] 3.3 `list_constraints(timetable_id) -> list[Constraint]`: return all constraints for timetable ordered by created_at
-  - [ ] 3.4 Add `delete_constraint(constraint_id, timetable_id)` for future use (optional, only if simple)
+- [x] Task 3: Create ConstraintService (AC: #1, #2, #4, #7)
+  - [x] 3.1 Create `easyorario/services/constraint.py` -- ConstraintService with `add_constraint()` and `list_constraints()` methods
+  - [x] 3.2 `add_constraint(timetable_id, natural_language_text)`: validate text non-empty after strip, max 1000 chars; create Constraint with status="pending"
+  - [x] 3.3 `list_constraints(timetable_id) -> list[Constraint]`: return all constraints for timetable ordered by created_at
+  - [x] 3.4 Add `delete_constraint(constraint_id, timetable_id)` for future use (optional, only if simple) -- SKIPPED: not needed yet, would be dead code
 
-- [ ] Task 4: Add domain exceptions and Italian messages (AC: #7)
-  - [ ] 4.1 Add `InvalidConstraintDataError` to `easyorario/exceptions.py` with error_key
-  - [ ] 4.2 Add Italian constraint validation messages to `easyorario/i18n/errors.py`
+- [x] Task 4: Add domain exceptions and Italian messages (AC: #7)
+  - [x] 4.1 Add `InvalidConstraintDataError` to `easyorario/exceptions.py` with error_key
+  - [x] 4.2 Add Italian constraint validation messages to `easyorario/i18n/errors.py`
 
-- [ ] Task 5: Create ConstraintController (AC: #1, #2, #5, #6, #7, #8)
-  - [ ] 5.1 Create `easyorario/controllers/constraint.py` with `path="/orario/{timetable_id:uuid}/vincoli"`
-  - [ ] 5.2 `GET /` -- Render constraint input page: textarea form + constraint list + "Verifica vincoli" link (if any pending constraints)
-  - [ ] 5.3 `POST /` -- Parse textarea, call ConstraintService.add_constraint(), redirect back to GET (PRG pattern)
-  - [ ] 5.4 Ownership guard: verify `request.user.id == timetable.owner_id`, raise 403 otherwise
-  - [ ] 5.5 Guard: `requires_responsible_professor` on both GET and POST routes
-  - [ ] 5.6 Remove stub vincoli route from TimetableController
+- [x] Task 5: Create ConstraintController (AC: #1, #2, #5, #6, #7, #8)
+  - [x] 5.1 Create `easyorario/controllers/constraint.py` with `path="/orario/{timetable_id:uuid}/vincoli"`
+  - [x] 5.2 `GET /` -- Render constraint input page: textarea form + constraint list + "Verifica vincoli" link (if any pending constraints)
+  - [x] 5.3 `POST /` -- Parse textarea, call ConstraintService.add_constraint(), redirect back to GET (PRG pattern)
+  - [x] 5.4 Ownership guard: verify `request.user.id == timetable.owner_id`, raise 403 otherwise
+  - [x] 5.5 Guard: `requires_responsible_professor` on both GET and POST routes
+  - [x] 5.6 Remove stub vincoli route from TimetableController
 
-- [ ] Task 6: Create constraint input template (AC: #1, #2, #4, #5)
-  - [ ] 6.1 Replace `templates/pages/timetable_constraints.html` with full constraint page
-  - [ ] 6.2 Layout: timetable identifier header, textarea form with "Aggiungi vincolo" button, constraint list below
-  - [ ] 6.3 Each constraint card: original text + status badge (pending=default, verified=green, rejected=red)
-  - [ ] 6.4 "Verifica vincoli" button visible when any pending constraints exist (links to `/orario/{id}/vincoli/verifica`, non-functional stub)
-  - [ ] 6.5 All labels and text in Italian, CSRF token included
-  - [ ] 6.6 Textarea: `maxlength="1000"`, `minlength="1"`, placeholder with Italian example
+- [x] Task 6: Create constraint input template (AC: #1, #2, #4, #5)
+  - [x] 6.1 Replace `templates/pages/timetable_constraints.html` with full constraint page
+  - [x] 6.2 Layout: timetable identifier header, textarea form with "Aggiungi vincolo" button, constraint list below
+  - [x] 6.3 Each constraint card: original text + status badge (pending=default, verified=green, rejected=red)
+  - [x] 6.4 "Verifica vincoli" button visible when any pending constraints exist (links to `/orario/{id}/vincoli/verifica`, non-functional stub)
+  - [x] 6.5 All labels and text in Italian, CSRF token included
+  - [x] 6.6 Textarea: `maxlength="1000"`, `minlength="1"`, placeholder with Italian example
 
-- [ ] Task 7: Register DI providers and controller in app.py (AC: #1)
-  - [ ] 7.1 Add `provide_constraint_repository` and `provide_constraint_service` DI functions
-  - [ ] 7.2 Register in `dependencies` dict in `create_app()`
-  - [ ] 7.3 Add ConstraintController to `route_handlers` list
-  - [ ] 7.4 Also inject TimetableRepository into ConstraintController for ownership check
+- [x] Task 7: Register DI providers and controller in app.py (AC: #1)
+  - [x] 7.1 Add `provide_constraint_repository` and `provide_constraint_service` DI functions
+  - [x] 7.2 Register in `dependencies` dict in `create_app()`
+  - [x] 7.3 Add ConstraintController to `route_handlers` list
+  - [x] 7.4 Also inject TimetableRepository into ConstraintController for ownership check
 
-- [ ] Task 8: Write tests (AC: #1-#8)
-  - [ ] 8.1 `tests/models/test_constraint.py`: model creation, defaults (status="pending"), timetable relationship
-  - [ ] 8.2 `tests/repositories/test_constraint_repository.py`: add_constraint persists, get_by_timetable returns ordered list, get_by_timetable returns empty for other timetable
-  - [ ] 8.3 `tests/services/test_constraint.py`: add_constraint happy path, empty text raises error, text > 1000 chars raises error, list_constraints returns ordered list
-  - [ ] 8.4 `tests/controllers/test_constraint.py`: GET renders form with constraint list, POST adds constraint and redirects, POST with empty text shows error, GET as Professor returns 403, GET for non-owned timetable returns 403, "Verifica vincoli" button appears when pending constraints exist, GET with no constraints shows empty state
+- [x] Task 8: Write tests (AC: #1-#8)
+  - [x] 8.1 `tests/models/test_constraint.py`: model creation, defaults (status="pending"), timetable relationship
+  - [x] 8.2 `tests/repositories/test_constraint_repository.py`: add_constraint persists, get_by_timetable returns ordered list, get_by_timetable returns empty for other timetable
+  - [x] 8.3 `tests/services/test_constraint.py`: add_constraint happy path, empty text raises error, text > 1000 chars raises error, list_constraints returns ordered list
+  - [x] 8.4 `tests/controllers/test_constraint.py`: GET renders form with constraint list, POST adds constraint and redirects, POST with empty text shows error, GET as Professor returns 403, GET for non-owned timetable returns 403, "Verifica vincoli" button appears when pending constraints exist, GET with no constraints shows empty state
 
 ## Dev Notes
 
@@ -385,10 +385,48 @@ Follow same atomic commit pattern: one commit per task group, descriptive messag
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
+No blocking issues encountered during implementation.
+
 ### Completion Notes List
 
+- Implemented full Constraint CRUD flow following layered architecture (Controller -> Service -> Repository)
+- Constraint model with UUID PK, FK to timetables with CASCADE delete, index on timetable_id
+- Service validates text non-empty (after strip) and max 1000 chars, raises InvalidConstraintDataError with i18n error keys
+- Controller applies requires_responsible_professor guard + ownership check on both GET and POST
+- PRG pattern for POST: add constraint, redirect to GET; autocommit_handler_maker handles commit on redirect
+- Template shows timetable header, textarea form, constraint list with status badges, "Verifica vincoli" button when pending
+- Task 3.4 (delete_constraint) skipped as optional dead code -- not needed until a future story
+- 17 new tests across model (2), repository (3), service (4), controller (8) -- all pass
+- 1 pre-existing test failure (test_home.py::test_get_home_unauthenticated_renders_index) unrelated to this story
+- All linting and type checks pass (ruff check + pyright)
+
+### Change Log
+
+- 2026-02-18: Implemented Story 2.2 -- Constraint Input in Natural Language (all 8 tasks)
+
 ### File List
+
+**Created:**
+- easyorario/models/constraint.py
+- easyorario/repositories/constraint.py
+- easyorario/services/constraint.py
+- easyorario/controllers/constraint.py
+- tests/models/test_constraint.py
+- tests/repositories/test_constraint_repository.py
+- tests/services/test_constraint.py
+- tests/controllers/test_constraint.py
+- alembic/versions/1e0a494256e0_create_constraints_table.py
+
+**Modified:**
+- easyorario/models/__init__.py (export Constraint)
+- easyorario/models/timetable.py (add constraints relationship, TYPE_CHECKING import)
+- easyorario/repositories/__init__.py (export ConstraintRepository)
+- easyorario/controllers/timetable.py (remove vincoli stub route)
+- easyorario/app.py (add DI providers, register ConstraintController)
+- easyorario/exceptions.py (add InvalidConstraintDataError)
+- easyorario/i18n/errors.py (add constraint validation messages)
+- templates/pages/timetable_constraints.html (replace stub with full constraint page)

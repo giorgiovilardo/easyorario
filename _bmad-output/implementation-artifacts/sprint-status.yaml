@@ -51,7 +51,7 @@ development_status:
   # Epic 2: Timetable Creation & Constraint Input
   epic-2: in-progress
   2-1-create-new-timetable: done
-  2-2-constraint-input-in-natural-language: in-progress
+  2-2-constraint-input-in-natural-language: review
   epic-2-retrospective: optional
 
   # Epic 3: LLM Constraint Translation & Verification
