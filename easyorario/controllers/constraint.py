@@ -4,7 +4,6 @@ import uuid
 from dataclasses import dataclass
 from typing import Annotated
 
-import structlog
 from litestar import Controller, Request, get, post
 from litestar.enums import RequestEncodingType
 from litestar.exceptions import NotAuthorizedException
@@ -16,8 +15,6 @@ from easyorario.guards.auth import requires_responsible_professor
 from easyorario.i18n.errors import MESSAGES
 from easyorario.repositories.timetable import TimetableRepository
 from easyorario.services.constraint import ConstraintService
-
-_log = structlog.get_logger()
 
 
 @dataclass
