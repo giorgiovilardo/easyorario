@@ -37,6 +37,7 @@ from easyorario.controllers.constraint import ConstraintController
 from easyorario.controllers.dashboard import DashboardController
 from easyorario.controllers.health import HealthController
 from easyorario.controllers.home import HomeController
+from easyorario.controllers.settings import SettingsController
 from easyorario.controllers.timetable import TimetableController
 from easyorario.i18n.errors import MESSAGES
 from easyorario.models.base import Base
@@ -46,6 +47,7 @@ from easyorario.repositories.timetable import TimetableRepository
 from easyorario.repositories.user import UserRepository
 from easyorario.services.auth import AuthService
 from easyorario.services.constraint import ConstraintService
+from easyorario.services.llm import LLMService
 from easyorario.services.timetable import TimetableService
 
 _BASE_DIR = Path(__file__).resolve().parent.parent
@@ -101,6 +103,11 @@ async def provide_constraint_repository(db_session: AsyncSession) -> ConstraintR
 async def provide_constraint_service(constraint_repo: ConstraintRepository) -> ConstraintService:
     """Provide ConstraintService via DI."""
     return ConstraintService(constraint_repo=constraint_repo)
+
+
+async def provide_llm_service() -> LLMService:
+    """Provide LLMService via DI."""
+    return LLMService()
 
 
 def create_app(database_url: str | None = None, create_all: bool = False, static_pool: bool = False) -> Litestar:
@@ -193,6 +200,7 @@ def create_app(database_url: str | None = None, create_all: bool = False, static
             DashboardController,
             TimetableController,
             ConstraintController,
+            SettingsController,
             static_files,
         ],
         plugins=[SQLAlchemyPlugin(config=db_config), structlog_plugin],
@@ -203,6 +211,7 @@ def create_app(database_url: str | None = None, create_all: bool = False, static
             "timetable_service": Provide(provide_timetable_service),
             "constraint_repo": Provide(provide_constraint_repository),
             "constraint_service": Provide(provide_constraint_service),
+            "llm_service": Provide(provide_llm_service),
         },
         on_app_init=[session_auth.on_app_init],
         exception_handlers={NotAuthorizedException: _auth_exception_handler},

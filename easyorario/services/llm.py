@@ -13,7 +13,7 @@ class LLMService:
 
     async def test_connectivity(self, base_url: str, api_key: str, model_id: str) -> None:
         """Test LLM endpoint connectivity. Raises LLMConfigError on failure."""
-        url = f"{base_url.rstrip('/')}/v1/models"
+        url = f"{base_url.rstrip('/')}/models"
         headers = {"Authorization": f"Bearer {api_key}"}
         async with httpx.AsyncClient(timeout=10.0) as client:
             try:
