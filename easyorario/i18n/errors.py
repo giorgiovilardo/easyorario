@@ -18,4 +18,11 @@ MESSAGES: dict[str, str] = {
     "teachers_format_invalid": "Formato non valido per i docenti. Usare 'Materia: Nome Docente' per ogni riga",
     "constraint_text_required": "Il testo del vincolo è obbligatorio",
     "constraint_text_too_long": "Il testo del vincolo non può superare 1000 caratteri",
+    "llm_connection_failed": "Impossibile connettersi all'endpoint LLM",
+    "llm_auth_failed": "Chiave API non valida",
+    "llm_timeout": "Timeout durante il test di connessione",
+    "llm_base_url_required": "L'URL base dell'endpoint LLM è obbligatorio",
+    "llm_api_key_required": "La chiave API è obbligatoria",
+    "llm_config_saved": "Configurazione LLM salvata con successo",
+    "llm_config_required": "Configura l'endpoint LLM prima di procedere",
 }

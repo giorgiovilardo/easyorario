@@ -27,3 +27,11 @@ def requires_responsible_professor(connection: ASGIConnection, _: BaseRouteHandl
     """Ensure user is a Responsible Professor."""
     if not connection.user or connection.user.role != "responsible_professor":
         raise NotAuthorizedException(detail="Insufficient permissions")
+
+
+def requires_llm_config(connection: ASGIConnection, _: BaseRouteHandler) -> None:
+    """Ensure LLM endpoint is configured in the session."""
+    from easyorario.services.llm import get_llm_config
+
+    if not get_llm_config(connection.session):
+        raise NotAuthorizedException(detail="LLM configuration required")

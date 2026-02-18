@@ -12,6 +12,7 @@ dependencies = [
     "structlog>=25.5.0",
     "z3-solver>=4.15.8.0",
     "argon2-cffi>=25.1.0",
+    "httpx>=0.28.0",
 ]
 
 [dependency-groups]

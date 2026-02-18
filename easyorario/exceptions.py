@@ -45,3 +45,11 @@ class InvalidConstraintDataError(EasyorarioError):
     def __init__(self, error_key: str) -> None:
         self.error_key = error_key
         super().__init__(error_key)
+
+
+class LLMConfigError(EasyorarioError):
+    """Raised when LLM configuration validation or connectivity fails."""
+
+    def __init__(self, error_key: str) -> None:
+        self.error_key = error_key
+        super().__init__(error_key)
