@@ -10,9 +10,13 @@ default:
 dev:
     DEBUG=true uv run litestar --app easyorario.app:app run --reload --debug
 
-# Run pytest
+# Run pytest (full suite)
 test:
     uv run pytest
+
+# Run pytest on a single file
+test-file path:
+    uv run pytest "{{path}}" -v
 
 # Run ruff check + pyright
 lint:

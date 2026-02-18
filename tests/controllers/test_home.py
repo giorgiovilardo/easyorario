@@ -5,7 +5,7 @@ async def test_get_home_unauthenticated_renders_index(client):
     """AC #5: GET / when not authenticated renders the landing page."""
     response = await client.get("/")
     assert response.status_code == 200
-    assert "Benvenuto su Easyorario" in response.text
+    assert "Crea orari scolastici senza stress" in response.text
 
 
 async def test_get_home_authenticated_redirects_to_dashboard(authenticated_client):
