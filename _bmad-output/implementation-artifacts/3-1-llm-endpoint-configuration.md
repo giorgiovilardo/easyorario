@@ -1,6 +1,6 @@
 # Story 3.1: LLM Endpoint Configuration
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -547,7 +547,7 @@ No blocking issues encountered during implementation.
 - SettingsController at `/impostazioni` with full form flow: validation, connectivity test, session storage, pre-population, api_key reuse.
 - Template uses Oat UI semantic HTML (data-field, data-hint, role="alert", badge).
 - All Italian user-facing messages via i18n/errors.py MESSAGES dict — no hardcoded strings in Python.
-- 14 service tests + 11 controller tests = 25 new tests. Full suite: 124 tests, 0 failures.
+- 17 service tests + 12 controller tests = 29 new tests. Full suite: 128 tests, 0 failures.
 - `just check` passes (format + lint + typecheck).
 
 ### File List
@@ -556,8 +556,8 @@ No blocking issues encountered during implementation.
 - `easyorario/services/llm.py` — LLMService with test_connectivity, get_llm_config, set_llm_config
 - `easyorario/controllers/settings.py` — SettingsController at /impostazioni
 - `templates/pages/settings.html` — LLM configuration form (Oat UI)
-- `tests/services/test_llm.py` — 14 tests for LLM service and helpers
-- `tests/controllers/test_settings.py` — 11 tests for settings controller
+- `tests/services/test_llm.py` — 17 tests for LLM service, helpers, and requires_llm_config guard
+- `tests/controllers/test_settings.py` — 12 tests for settings controller
 
 **Modified:**
 - `pyproject.toml` — added httpx>=0.28.0 dependency
@@ -570,3 +570,4 @@ No blocking issues encountered during implementation.
 ## Change Log
 
 - 2026-02-18: Story 3.1 implemented — LLM endpoint configuration with connectivity test, session-based config storage, settings form at /impostazioni, role-based access control, and comprehensive test coverage (25 tests).
+- 2026-02-18: Code review fixes — removed unused structlog import from llm.py, added 3 guard tests for requires_llm_config, added POST-as-professor 403 test, added HTML required attributes on form inputs. Test count: 29 new tests, 128 total.
