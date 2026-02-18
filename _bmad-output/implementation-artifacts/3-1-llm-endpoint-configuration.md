@@ -1,6 +1,6 @@
 # Story 3.1: LLM Endpoint Configuration
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -30,50 +30,50 @@ so that the system can translate my constraints using my preferred AI provider.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add httpx as explicit dependency (AC: #2, #3, #8)
-  - [ ] 1.1 Add `httpx>=0.28.0` to `pyproject.toml` dependencies (httpx is already available via `litestar[standard]` but the LLM service imports it directly, so declare it explicitly)
-  - [ ] 1.2 Run `uv sync` to update lockfile
+- [x] Task 1: Add httpx as explicit dependency (AC: #2, #3, #8)
+  - [x] 1.1 Add `httpx>=0.28.0` to `pyproject.toml` dependencies (httpx is already available via `litestar[standard]` but the LLM service imports it directly, so declare it explicitly)
+  - [x] 1.2 Run `uv sync` to update lockfile
 
-- [ ] Task 2: Add LLM domain exceptions and Italian messages (AC: #3, #7, #8)
-  - [ ] 2.1 Add `LLMConfigError` (base for LLM config errors, accepts `error_key`) to `easyorario/exceptions.py`
-  - [ ] 2.2 Add Italian messages to `easyorario/i18n/errors.py`: `llm_connection_failed`, `llm_auth_failed`, `llm_timeout`, `llm_base_url_required`, `llm_api_key_required`, `llm_config_saved`, `llm_config_required`
+- [x] Task 2: Add LLM domain exceptions and Italian messages (AC: #3, #7, #8)
+  - [x] 2.1 Add `LLMConfigError` (base for LLM config errors, accepts `error_key`) to `easyorario/exceptions.py`
+  - [x] 2.2 Add Italian messages to `easyorario/i18n/errors.py`: `llm_connection_failed`, `llm_auth_failed`, `llm_timeout`, `llm_base_url_required`, `llm_api_key_required`, `llm_config_saved`, `llm_config_required`
 
-- [ ] Task 3: Create LLM service with connectivity test (AC: #2, #3, #8)
-  - [ ] 3.1 Create `easyorario/services/llm.py` -- `LLMService` class (no constructor dependencies -- no DB access, stateless)
-  - [ ] 3.2 Implement `async test_connectivity(base_url: str, api_key: str, model_id: str) -> None` -- validates inputs, makes HTTP test request
-  - [ ] 3.3 Normalize `base_url` (strip trailing slash, ensure not empty)
-  - [ ] 3.4 Make `GET {base_url}/v1/models` with `Authorization: Bearer {api_key}` header using `httpx.AsyncClient` with 10-second timeout
-  - [ ] 3.5 Raise `LLMConfigError("llm_connection_failed")` on `httpx.ConnectError`/`httpx.RequestError`, `LLMConfigError("llm_auth_failed")` on HTTP 401/403, `LLMConfigError("llm_timeout")` on `httpx.TimeoutException`
+- [x] Task 3: Create LLM service with connectivity test (AC: #2, #3, #8)
+  - [x] 3.1 Create `easyorario/services/llm.py` -- `LLMService` class (no constructor dependencies -- no DB access, stateless)
+  - [x] 3.2 Implement `async test_connectivity(base_url: str, api_key: str, model_id: str) -> None` -- validates inputs, makes HTTP test request
+  - [x] 3.3 Normalize `base_url` (strip trailing slash, ensure not empty)
+  - [x] 3.4 Make `GET {base_url}/models` with `Authorization: Bearer {api_key}` header using `httpx.AsyncClient` with 10-second timeout (changed from `/v1/models` to `/models` — base_url now expected to include `/v1`, matching OpenAI SDK convention)
+  - [x] 3.5 Raise `LLMConfigError("llm_connection_failed")` on `httpx.ConnectError`/`httpx.RequestError`, `LLMConfigError("llm_auth_failed")` on HTTP 401/403, `LLMConfigError("llm_timeout")` on `httpx.TimeoutException`
 
-- [ ] Task 4: Create LLM config session helpers (AC: #4, #5)
-  - [ ] 4.1 Add helper functions in `easyorario/services/llm.py`: `get_llm_config(session: dict) -> dict | None` and `set_llm_config(request: Request, base_url: str, api_key: str, model_id: str) -> None`
-  - [ ] 4.2 `get_llm_config` returns `{"base_url": ..., "api_key": ..., "model_id": ...}` or `None` if any key missing
-  - [ ] 4.3 `set_llm_config` reads current session, merges LLM keys, calls `request.set_session()` with merged dict (CRITICAL: must not overwrite auth session data)
-  - [ ] 4.4 Create `requires_llm_config` guard function in `easyorario/guards/auth.py` -- reads session, if no LLM config present, raises `NotAuthorizedException` (which the exception handler will handle). Note: actual redirect-to-settings logic will be refined in Story 3.2; for now, the guard just blocks access.
+- [x] Task 4: Create LLM config session helpers (AC: #4, #5)
+  - [x] 4.1 Add helper functions in `easyorario/services/llm.py`: `get_llm_config(session: dict) -> dict | None` and `set_llm_config(request: Request, base_url: str, api_key: str, model_id: str) -> None`
+  - [x] 4.2 `get_llm_config` returns `{"base_url": ..., "api_key": ..., "model_id": ...}` or `None` if any key missing
+  - [x] 4.3 `set_llm_config` reads current session, merges LLM keys, calls `request.set_session()` with merged dict (CRITICAL: must not overwrite auth session data)
+  - [x] 4.4 Create `requires_llm_config` guard function in `easyorario/guards/auth.py` -- reads session, if no LLM config present, raises `NotAuthorizedException` (which the exception handler will handle). Note: actual redirect-to-settings logic will be refined in Story 3.2; for now, the guard just blocks access.
 
-- [ ] Task 5: Create SettingsController (AC: #1, #2, #3, #5, #6, #7, #8)
-  - [ ] 5.1 Create `easyorario/controllers/settings.py` with `path="/impostazioni"`
-  - [ ] 5.2 `GET /` -- render settings form. If LLM config exists in session, pre-populate `base_url` and `model_id` (NEVER show `api_key`). Guard: `requires_responsible_professor`.
-  - [ ] 5.3 `POST /` -- parse form data (base_url, api_key, model_id), validate non-empty required fields. If validation fails, re-render with Italian error and submitted values. If valid, call `LLMService.test_connectivity()`. On success: store config in session via `set_llm_config()`, re-render with Italian success message. On `LLMConfigError`: re-render with Italian error and submitted values (except api_key).
-  - [ ] 5.4 Guard: `requires_responsible_professor` on both GET and POST
+- [x] Task 5: Create SettingsController (AC: #1, #2, #3, #5, #6, #7, #8)
+  - [x] 5.1 Create `easyorario/controllers/settings.py` with `path="/impostazioni"`
+  - [x] 5.2 `GET /` -- render settings form. If LLM config exists in session, pre-populate `base_url` and `model_id` (NEVER show `api_key`). Guard: `requires_responsible_professor`.
+  - [x] 5.3 `POST /` -- parse form data (base_url, api_key, model_id), validate non-empty required fields. If validation fails, re-render with Italian error and submitted values. If valid, call `LLMService.test_connectivity()`. On success: store config in session via `set_llm_config()`, re-render with Italian success message. On `LLMConfigError`: re-render with Italian error and submitted values (except api_key).
+  - [x] 5.4 Guard: `requires_responsible_professor` on both GET and POST
 
-- [ ] Task 6: Create settings template (AC: #1, #5)
-  - [ ] 6.1 Create `templates/pages/settings.html` extending `base.html`
-  - [ ] 6.2 Form fields: base_url (text input, placeholder "https://api.openai.com"), api_key (password input, placeholder "sk-..."), model_id (text input, placeholder "gpt-4o")
-  - [ ] 6.3 All labels, placeholders, and messages in Italian
-  - [ ] 6.4 CSRF token included, Oat UI form styling
-  - [ ] 6.5 Success/error messages via `<div role="alert">`
-  - [ ] 6.6 Show "Configurazione attiva" badge when config already exists in session
+- [x] Task 6: Create settings template (AC: #1, #5)
+  - [x] 6.1 Create `templates/pages/settings.html` extending `base.html`
+  - [x] 6.2 Form fields: base_url (text input, placeholder "https://api.openai.com/v1"), api_key (password input, placeholder "sk-..."), model_id (text input, placeholder "gpt-4o")
+  - [x] 6.3 All labels, placeholders, and messages in Italian
+  - [x] 6.4 CSRF token included, Oat UI form styling
+  - [x] 6.5 Success/error messages via `<div role="alert">`
+  - [x] 6.6 Show "Configurazione attiva" badge when config already exists in session
 
-- [ ] Task 7: Update navigation and app wiring (AC: #1)
-  - [ ] 7.1 Add "Impostazioni" link in `templates/base.html` nav -- visible only for authenticated Responsible Professors (check `user.role == "responsible_professor"`)
-  - [ ] 7.2 Add `provide_llm_service` DI function in `app.py`
-  - [ ] 7.3 Register `SettingsController` in `route_handlers` list
-  - [ ] 7.4 Register `provide_llm_service` in `dependencies` dict
+- [x] Task 7: Update navigation and app wiring (AC: #1)
+  - [x] 7.1 Add "Impostazioni" link in `templates/base.html` nav -- visible only for authenticated Responsible Professors (check `user.role == "responsible_professor"`)
+  - [x] 7.2 Add `provide_llm_service` DI function in `app.py`
+  - [x] 7.3 Register `SettingsController` in `route_handlers` list
+  - [x] 7.4 Register `provide_llm_service` in `dependencies` dict
 
-- [ ] Task 8: Write tests (AC: #1-#8)
-  - [ ] 8.1 `tests/services/test_llm.py`: test_connectivity with mocked httpx responses (success, 401, connection error, timeout), get_llm_config/set_llm_config helpers
-  - [ ] 8.2 `tests/controllers/test_settings.py`: GET form renders, POST with valid config (mocked), POST with invalid config (mocked), POST with empty fields, GET as Professor returns 403, GET pre-populates from session, success message after valid POST
+- [x] Task 8: Write tests (AC: #1-#8)
+  - [x] 8.1 `tests/services/test_llm.py`: test_connectivity with mocked httpx responses (success, 401, 403, connection error, timeout, server error), get_llm_config/set_llm_config helpers, trailing slash normalization
+  - [x] 8.2 `tests/controllers/test_settings.py`: GET form renders, POST with valid config (mocked), POST with invalid config (mocked), POST with empty fields, GET as Professor returns 403, GET pre-populates from session, success message after valid POST, reuses api_key when blank, timeout error, preserves values on error
 
 ## Dev Notes
 
@@ -533,10 +533,40 @@ a43640e story 2.1: timetable model, user relationship, and alembic migration (ta
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
+No blocking issues encountered during implementation.
+
 ### Completion Notes List
 
+- Implemented LLMService with connectivity test via `GET {base_url}/models` (OpenAI-compatible). Changed from story spec's `/v1/models` to just `/models` since base_url now includes `/v1` per current OpenAI SDK convention.
+- LLM config stored in HTTP session alongside auth data using merge pattern (never overwrites auth keys).
+- `requires_llm_config` guard created for future use in Story 3.2 (constraint translation).
+- SettingsController at `/impostazioni` with full form flow: validation, connectivity test, session storage, pre-population, api_key reuse.
+- Template uses Oat UI semantic HTML (data-field, data-hint, role="alert", badge).
+- All Italian user-facing messages via i18n/errors.py MESSAGES dict — no hardcoded strings in Python.
+- 14 service tests + 11 controller tests = 25 new tests. Full suite: 124 tests, 0 failures.
+- `just check` passes (format + lint + typecheck).
+
 ### File List
+
+**Created:**
+- `easyorario/services/llm.py` — LLMService with test_connectivity, get_llm_config, set_llm_config
+- `easyorario/controllers/settings.py` — SettingsController at /impostazioni
+- `templates/pages/settings.html` — LLM configuration form (Oat UI)
+- `tests/services/test_llm.py` — 14 tests for LLM service and helpers
+- `tests/controllers/test_settings.py` — 11 tests for settings controller
+
+**Modified:**
+- `pyproject.toml` — added httpx>=0.28.0 dependency
+- `easyorario/exceptions.py` — added LLMConfigError
+- `easyorario/i18n/errors.py` — added 7 LLM-related Italian messages
+- `easyorario/guards/auth.py` — added requires_llm_config guard
+- `easyorario/app.py` — imported SettingsController, LLMService; added provide_llm_service DI; registered SettingsController
+- `templates/base.html` — added "Impostazioni" nav link for RP users
+
+## Change Log
+
+- 2026-02-18: Story 3.1 implemented — LLM endpoint configuration with connectivity test, session-based config storage, settings form at /impostazioni, role-based access control, and comprehensive test coverage (25 tests).
