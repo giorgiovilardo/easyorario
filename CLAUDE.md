@@ -20,15 +20,16 @@ Easyorario is a server-rendered Python web app for Italian school timetable gene
 Package management uses **uv**. Task runner uses **just** (justfile at project root).
 
 ```bash
-just dev              # Start Litestar dev server with hot reload
-just test             # Run pytest
-just check            # Run format + lint + typecheck (run before every commit)
-just lint             # Run ruff check + pyright
-just fmt              # Run ruff format
-just db-migrate       # Run alembic upgrade head
-just db-revision msg  # Create new alembic migration
-just docker-build     # Build Docker image
-just docker-run       # Run Docker container
+just dev                    # Start Litestar dev server with hot reload
+just test                   # Run pytest (full suite)
+just test-file <path>       # Run pytest on a single file (e.g., just test-file tests/services/test_auth.py)
+just check                  # Run format + lint + typecheck (run before every commit)
+just lint                   # Run ruff check + pyright
+just fmt                    # Run ruff format
+just db-migrate             # Run alembic upgrade head
+just db-revision msg        # Create new alembic migration
+just docker-build           # Build Docker image
+just docker-run             # Run Docker container
 ```
 
 Direct commands (if justfile not yet created):
@@ -77,6 +78,14 @@ Long-running operations (Z3 solving, LLM translation) use Litestar background ta
 ### Always update CLAUDE.md
 
 After a change, check to see if the CLAUDE.md file must be updated.
+
+### Testing Protocol
+
+Follow this testing workflow for every dev session:
+
+1. **Start of work**: Run `just test` (full suite). If anything is broken, **stop and fix it** before implementing new features.
+2. **During development**: Run only the relevant test file(s) with `just test-file <path>` (e.g., `just test-file tests/services/test_constraint.py`). No need to run the full suite on every change.
+3. **End of work**: Run `just test` (full suite) again to catch regressions before committing.
 
 ### TDD (Mandatory)
 
