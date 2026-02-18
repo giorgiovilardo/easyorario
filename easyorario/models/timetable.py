@@ -2,12 +2,16 @@
 
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from easyorario.models.base import Base
 from easyorario.models.user import User
+
+if TYPE_CHECKING:
+    from easyorario.models.constraint import Constraint
 
 
 class Timetable(Base):
@@ -26,3 +30,4 @@ class Timetable(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     owner: Mapped[User] = relationship(back_populates="timetables", lazy="selectin")
+    constraints: Mapped[list[Constraint]] = relationship(back_populates="timetable", lazy="selectin")
