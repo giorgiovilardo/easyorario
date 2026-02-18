@@ -37,3 +37,11 @@ class InvalidTimetableDataError(EasyorarioError):
     def __init__(self, error_key: str) -> None:
         self.error_key = error_key
         super().__init__(error_key)
+
+
+class InvalidConstraintDataError(EasyorarioError):
+    """Raised when constraint form data fails validation."""
+
+    def __init__(self, error_key: str) -> None:
+        self.error_key = error_key
+        super().__init__(error_key)
