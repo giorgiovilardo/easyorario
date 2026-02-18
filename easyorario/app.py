@@ -33,6 +33,7 @@ from sqlalchemy.pool import StaticPool
 
 from easyorario.config import settings
 from easyorario.controllers.auth import AuthController
+from easyorario.controllers.constraint import ConstraintController
 from easyorario.controllers.dashboard import DashboardController
 from easyorario.controllers.health import HealthController
 from easyorario.controllers.home import HomeController
@@ -40,9 +41,11 @@ from easyorario.controllers.timetable import TimetableController
 from easyorario.i18n.errors import MESSAGES
 from easyorario.models.base import Base
 from easyorario.models.user import User
+from easyorario.repositories.constraint import ConstraintRepository
 from easyorario.repositories.timetable import TimetableRepository
 from easyorario.repositories.user import UserRepository
 from easyorario.services.auth import AuthService
+from easyorario.services.constraint import ConstraintService
 from easyorario.services.timetable import TimetableService
 
 _BASE_DIR = Path(__file__).resolve().parent.parent
@@ -88,6 +91,16 @@ async def provide_timetable_repository(db_session: AsyncSession) -> TimetableRep
 async def provide_timetable_service(timetable_repo: TimetableRepository) -> TimetableService:
     """Provide TimetableService via DI."""
     return TimetableService(timetable_repo=timetable_repo)
+
+
+async def provide_constraint_repository(db_session: AsyncSession) -> ConstraintRepository:
+    """Provide ConstraintRepository via DI."""
+    return ConstraintRepository(session=db_session)
+
+
+async def provide_constraint_service(constraint_repo: ConstraintRepository) -> ConstraintService:
+    """Provide ConstraintService via DI."""
+    return ConstraintService(constraint_repo=constraint_repo)
 
 
 def create_app(database_url: str | None = None, create_all: bool = False, static_pool: bool = False) -> Litestar:
@@ -179,6 +192,7 @@ def create_app(database_url: str | None = None, create_all: bool = False, static
             AuthController,
             DashboardController,
             TimetableController,
+            ConstraintController,
             static_files,
         ],
         plugins=[SQLAlchemyPlugin(config=db_config), structlog_plugin],
@@ -187,6 +201,8 @@ def create_app(database_url: str | None = None, create_all: bool = False, static
             "auth_service": Provide(provide_auth_service),
             "timetable_repo": Provide(provide_timetable_repository),
             "timetable_service": Provide(provide_timetable_service),
+            "constraint_repo": Provide(provide_constraint_repository),
+            "constraint_service": Provide(provide_constraint_service),
         },
         on_app_init=[session_auth.on_app_init],
         exception_handlers={NotAuthorizedException: _auth_exception_handler},

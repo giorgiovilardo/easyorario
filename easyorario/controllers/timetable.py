@@ -1,6 +1,5 @@
-"""Timetable controller — create timetable form and constraints stub."""
+"""Timetable controller — create timetable form."""
 
-import uuid
 from dataclasses import dataclass
 from typing import Annotated
 
@@ -67,11 +66,3 @@ class TimetableController(Controller):
                     "form": data,
                 },
             )
-
-    @get("/{timetable_id:uuid}/vincoli", guards=[requires_responsible_professor])
-    async def show_constraints(self, request: Request, timetable_id: uuid.UUID) -> Template:
-        """Stub constraints page — placeholder for Story 2.2."""
-        return Template(
-            template_name="pages/timetable_constraints.html",
-            context={"user": request.user, "timetable_id": timetable_id},
-        )
