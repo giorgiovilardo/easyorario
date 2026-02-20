@@ -25,4 +25,10 @@ MESSAGES: dict[str, str] = {
     "llm_api_key_required": "La chiave API è obbligatoria",
     "llm_config_saved": "Configurazione LLM salvata con successo",
     "llm_config_required": "Configura l'endpoint LLM prima di procedere",
+    "llm_translation_failed": "Errore durante la traduzione del vincolo",
+    "llm_translation_malformed": "Il modello ha restituito una risposta non valida. Prova a riformulare il vincolo",
+    "llm_translation_timeout": "Timeout durante la traduzione del vincolo",
+    "translation_success": "Vincoli tradotti con successo",
+    "all_translations_failed": "Impossibile tradurre i vincoli. Verifica la configurazione LLM o riformula i vincoli",
+    "no_pending_constraints": "Nessun vincolo in attesa di traduzione",
 }

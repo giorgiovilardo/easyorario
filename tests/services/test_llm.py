@@ -6,9 +6,21 @@ import httpx
 import pytest
 from litestar.exceptions import NotAuthorizedException
 
-from easyorario.exceptions import LLMConfigError
+from easyorario.exceptions import LLMConfigError, LLMTranslationError
 from easyorario.guards.auth import requires_llm_config
 from easyorario.services.llm import LLMService, get_llm_config
+
+
+class TestLLMTranslationError:
+    def test_llm_translation_error_stores_error_key(self):
+        exc = LLMTranslationError("llm_translation_failed")
+        assert exc.error_key == "llm_translation_failed"
+
+    def test_llm_translation_error_is_easyorario_error(self):
+        from easyorario.exceptions import EasyorarioError
+
+        exc = LLMTranslationError("llm_translation_malformed")
+        assert isinstance(exc, EasyorarioError)
 
 
 class TestLLMConfigError:
