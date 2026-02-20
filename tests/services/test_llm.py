@@ -1,5 +1,6 @@
-"""Tests for LLM service: connectivity test, session helpers, and guards."""
+"""Tests for LLM service: connectivity test, translation, session helpers, and guards."""
 
+import json
 from unittest.mock import MagicMock
 
 import httpx
@@ -9,6 +10,26 @@ from litestar.exceptions import NotAuthorizedException
 from easyorario.exceptions import LLMConfigError, LLMTranslationError
 from easyorario.guards.auth import requires_llm_config
 from easyorario.services.llm import LLMService, get_llm_config
+
+TIMETABLE_CONTEXT = {
+    "class_identifier": "3A",
+    "weekly_hours": 30,
+    "subjects": "Matematica, Italiano",
+    "teachers": "Matematica: Prof. Rossi, Italiano: Prof. Bianchi",
+    "max_slots": 5,
+}
+
+VALID_TRANSLATION = {
+    "constraint_type": "teacher_unavailable",
+    "description": "Prof. Rossi non è disponibile il lunedì nelle ore 1-3",
+    "teacher": "Prof. Rossi",
+    "subject": None,
+    "days": ["lunedì"],
+    "time_slots": [1, 2, 3],
+    "max_consecutive_hours": None,
+    "room": None,
+    "notes": None,
+}
 
 
 class TestLLMTranslationError:
@@ -110,6 +131,161 @@ class TestLLMServiceConnectivity:
         service = LLMService()
         await service.test_connectivity("https://api.openai.com/v1/", "sk-valid", "gpt-4o")
         assert captured_url == "https://api.openai.com/v1/models"
+
+
+class TestTranslateConstraint:
+    """Test LLMService.translate_constraint with mocked httpx responses."""
+
+    async def test_translate_constraint_with_valid_response_returns_dict(self, monkeypatch):
+        async def mock_post(self, url, **kwargs):
+            return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(VALID_TRANSLATION)}}]})
+
+        monkeypatch.setattr(httpx.AsyncClient, "post", mock_post)
+        service = LLMService()
+        result = await service.translate_constraint(
+            base_url="https://api.example.com/v1",
+            api_key="sk-test",
+            model_id="gpt-4o",
+            constraint_text="Prof. Rossi non può insegnare il lunedì mattina",
+            timetable_context=TIMETABLE_CONTEXT,
+        )
+        assert result["constraint_type"] == "teacher_unavailable"
+        assert result["teacher"] == "Prof. Rossi"
+        assert result["days"] == ["lunedì"]
+
+    async def test_translate_constraint_with_malformed_json_raises(self, monkeypatch):
+        async def mock_post(self, url, **kwargs):
+            return httpx.Response(200, json={"choices": [{"message": {"content": "not json at all"}}]})
+
+        monkeypatch.setattr(httpx.AsyncClient, "post", mock_post)
+        service = LLMService()
+        with pytest.raises(LLMTranslationError, match="llm_translation_malformed"):
+            await service.translate_constraint(
+                base_url="https://api.example.com/v1",
+                api_key="sk-test",
+                model_id="gpt-4o",
+                constraint_text="test",
+                timetable_context=TIMETABLE_CONTEXT,
+            )
+
+    async def test_translate_constraint_with_invalid_schema_raises(self, monkeypatch):
+        # Missing required fields
+        async def mock_post(self, url, **kwargs):
+            return httpx.Response(
+                200, json={"choices": [{"message": {"content": json.dumps({"constraint_type": "general"})}}]}
+            )
+
+        monkeypatch.setattr(httpx.AsyncClient, "post", mock_post)
+        service = LLMService()
+        with pytest.raises(LLMTranslationError, match="llm_translation_malformed"):
+            await service.translate_constraint(
+                base_url="https://api.example.com/v1",
+                api_key="sk-test",
+                model_id="gpt-4o",
+                constraint_text="test",
+                timetable_context=TIMETABLE_CONTEXT,
+            )
+
+    async def test_translate_constraint_with_timeout_raises(self, monkeypatch):
+        async def mock_post(self, url, **kwargs):
+            raise httpx.ReadTimeout("Timed out")
+
+        monkeypatch.setattr(httpx.AsyncClient, "post", mock_post)
+        service = LLMService()
+        with pytest.raises(LLMTranslationError, match="llm_translation_timeout"):
+            await service.translate_constraint(
+                base_url="https://api.example.com/v1",
+                api_key="sk-test",
+                model_id="gpt-4o",
+                constraint_text="test",
+                timetable_context=TIMETABLE_CONTEXT,
+            )
+
+    async def test_translate_constraint_with_connection_error_raises(self, monkeypatch):
+        async def mock_post(self, url, **kwargs):
+            raise httpx.ConnectError("Connection refused")
+
+        monkeypatch.setattr(httpx.AsyncClient, "post", mock_post)
+        service = LLMService()
+        with pytest.raises(LLMTranslationError, match="llm_translation_failed"):
+            await service.translate_constraint(
+                base_url="https://api.example.com/v1",
+                api_key="sk-test",
+                model_id="gpt-4o",
+                constraint_text="test",
+                timetable_context=TIMETABLE_CONTEXT,
+            )
+
+    async def test_translate_constraint_with_auth_failure_raises(self, monkeypatch):
+        async def mock_post(self, url, **kwargs):
+            return httpx.Response(401, json={"error": "invalid_api_key"})
+
+        monkeypatch.setattr(httpx.AsyncClient, "post", mock_post)
+        service = LLMService()
+        with pytest.raises(LLMConfigError, match="llm_auth_failed"):
+            await service.translate_constraint(
+                base_url="https://api.example.com/v1",
+                api_key="sk-bad",
+                model_id="gpt-4o",
+                constraint_text="test",
+                timetable_context=TIMETABLE_CONTEXT,
+            )
+
+    async def test_translate_constraint_with_server_error_raises(self, monkeypatch):
+        async def mock_post(self, url, **kwargs):
+            return httpx.Response(500, text="Internal Server Error")
+
+        monkeypatch.setattr(httpx.AsyncClient, "post", mock_post)
+        service = LLMService()
+        with pytest.raises(LLMTranslationError, match="llm_translation_failed"):
+            await service.translate_constraint(
+                base_url="https://api.example.com/v1",
+                api_key="sk-test",
+                model_id="gpt-4o",
+                constraint_text="test",
+                timetable_context=TIMETABLE_CONTEXT,
+            )
+
+    async def test_translate_constraint_includes_timetable_context_in_prompt(self, monkeypatch):
+        captured_payload = {}
+
+        async def mock_post(self, url, **kwargs):
+            captured_payload.update(kwargs.get("json", {}))
+            return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(VALID_TRANSLATION)}}]})
+
+        monkeypatch.setattr(httpx.AsyncClient, "post", mock_post)
+        service = LLMService()
+        await service.translate_constraint(
+            base_url="https://api.example.com/v1",
+            api_key="sk-test",
+            model_id="gpt-4o",
+            constraint_text="test",
+            timetable_context=TIMETABLE_CONTEXT,
+        )
+        system_msg = captured_payload["messages"][0]["content"]
+        assert "3A" in system_msg
+        assert "Matematica" in system_msg
+        assert "Prof. Rossi" in system_msg
+
+    async def test_translate_constraint_sends_structured_output_format(self, monkeypatch):
+        captured_payload = {}
+
+        async def mock_post(self, url, **kwargs):
+            captured_payload.update(kwargs.get("json", {}))
+            return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(VALID_TRANSLATION)}}]})
+
+        monkeypatch.setattr(httpx.AsyncClient, "post", mock_post)
+        service = LLMService()
+        await service.translate_constraint(
+            base_url="https://api.example.com/v1",
+            api_key="sk-test",
+            model_id="gpt-4o",
+            constraint_text="test",
+            timetable_context=TIMETABLE_CONTEXT,
+        )
+        assert captured_payload["response_format"]["type"] == "json_schema"
+        assert captured_payload["response_format"]["json_schema"]["name"] == "constraint_translation"
+        assert captured_payload["response_format"]["json_schema"]["strict"] is True
 
 
 class TestGetLLMConfig:
