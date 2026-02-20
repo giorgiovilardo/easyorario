@@ -100,9 +100,11 @@ async def provide_constraint_repository(db_session: AsyncSession) -> ConstraintR
     return ConstraintRepository(session=db_session)
 
 
-async def provide_constraint_service(constraint_repo: ConstraintRepository) -> ConstraintService:
+async def provide_constraint_service(
+    constraint_repo: ConstraintRepository, llm_service: LLMService
+) -> ConstraintService:
     """Provide ConstraintService via DI."""
-    return ConstraintService(constraint_repo=constraint_repo)
+    return ConstraintService(constraint_repo=constraint_repo, llm_service=llm_service)
 
 
 async def provide_llm_service() -> LLMService:

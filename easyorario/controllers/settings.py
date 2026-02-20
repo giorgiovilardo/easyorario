@@ -30,18 +30,18 @@ class SettingsController(Controller):
     path = "/impostazioni"
 
     @get("/", guards=[requires_responsible_professor])
-    async def show_settings(self, request: Request) -> Template:
+    async def show_settings(self, request: Request, message: str | None = None) -> Template:
         """Render the LLM configuration form."""
         llm_config = get_llm_config(request.session)
-        return Template(
-            template_name="pages/settings.html",
-            context={
-                "user": request.user,
-                "base_url": llm_config["base_url"] if llm_config else "",
-                "model_id": llm_config["model_id"] if llm_config else "",
-                "has_config": llm_config is not None,
-            },
-        )
+        ctx: dict = {
+            "user": request.user,
+            "base_url": llm_config["base_url"] if llm_config else "",
+            "model_id": llm_config["model_id"] if llm_config else "",
+            "has_config": llm_config is not None,
+        }
+        if message and message in MESSAGES:
+            ctx["error"] = MESSAGES[message]
+        return Template(template_name="pages/settings.html", context=ctx)
 
     @post("/", guards=[requires_responsible_professor])
     async def save_settings(

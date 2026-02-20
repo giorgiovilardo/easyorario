@@ -53,3 +53,11 @@ class LLMConfigError(EasyorarioError):
     def __init__(self, error_key: str) -> None:
         self.error_key = error_key
         super().__init__(error_key)
+
+
+class LLMTranslationError(EasyorarioError):
+    """Raised when LLM constraint translation fails."""
+
+    def __init__(self, error_key: str) -> None:
+        self.error_key = error_key
+        super().__init__(error_key)
