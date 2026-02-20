@@ -42,12 +42,14 @@ class ConstraintController(Controller):
             raise NotAuthorizedException(detail="Insufficient permissions")
         constraints = await constraint_service.list_constraints(timetable_id=timetable_id)
         has_pending = any(c.status == "pending" for c in constraints)
+        has_failed = any(c.status == "translation_failed" for c in constraints)
         return Template(
             template_name="pages/timetable_constraints.html",
             context={
                 "timetable": timetable,
                 "constraints": constraints,
                 "has_pending": has_pending,
+                "has_failed": has_failed,
                 "user": request.user,
             },
         )
@@ -74,6 +76,7 @@ class ConstraintController(Controller):
         except InvalidConstraintDataError as exc:
             constraints = await constraint_service.list_constraints(timetable_id=timetable_id)
             has_pending = any(c.status == "pending" for c in constraints)
+            has_failed = any(c.status == "translation_failed" for c in constraints)
             return Template(
                 "pages/timetable_constraints.html",
                 context={
@@ -81,6 +84,7 @@ class ConstraintController(Controller):
                     "timetable": timetable,
                     "constraints": constraints,
                     "has_pending": has_pending,
+                    "has_failed": has_failed,
                     "user": request.user,
                 },
             )
@@ -94,13 +98,13 @@ class ConstraintController(Controller):
         constraint_service: ConstraintService,
     ) -> Template | Redirect:
         """Trigger LLM translation of pending constraints and render verification page."""
-        llm_config = get_llm_config(request.session)
-        if not llm_config:
-            return Redirect(path="/impostazioni")
-
         timetable = await timetable_repo.get(timetable_id)
         if timetable.owner_id != request.user.id:
             raise NotAuthorizedException(detail="Insufficient permissions")
+
+        llm_config = get_llm_config(request.session)
+        if not llm_config:
+            return Redirect(path="/impostazioni?message=llm_config_required")
 
         constraints = await constraint_service.translate_pending_constraints(
             timetable=timetable,

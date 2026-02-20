@@ -53,17 +53,17 @@ class ConstraintService:
     ) -> list[Constraint]:
         """Translate all pending constraints for a timetable via LLM."""
         constraints = await self.constraint_repo.get_by_timetable(timetable.id)
-        pending = [c for c in constraints if c.status == "pending"]
+        pending = [c for c in constraints if c.status in ("pending", "translation_failed")]
 
         timetable_context = {
             "class_identifier": timetable.class_identifier,
             "weekly_hours": timetable.weekly_hours,
             "subjects": ", ".join(timetable.subjects),
             "teachers": ", ".join(f"{subj}: {teacher}" for subj, teacher in timetable.teachers.items()),
-            "max_slots": timetable.weekly_hours // 6,
+            "max_slots": min(timetable.weekly_hours // 5, 8),
         }
 
-        for constraint in pending:
+        for i, constraint in enumerate(pending):
             try:
                 result = await self.llm_service.translate_constraint(
                     base_url=llm_config["base_url"],
@@ -74,7 +74,19 @@ class ConstraintService:
                 )
                 constraint.formal_representation = result
                 constraint.status = "translated"
-            except (LLMTranslationError, LLMConfigError) as exc:
+            except LLMConfigError as exc:
+                # Config error (bad API key, etc.) — fail fast, mark all remaining as failed
+                await _log.awarning(
+                    "constraint_translation_config_error",
+                    constraint_id=str(constraint.id),
+                    error_key=exc.error_key,
+                )
+                for remaining in pending[i:]:
+                    remaining.status = "translation_failed"
+                    remaining.formal_representation = None
+                    await self.constraint_repo.update(remaining)
+                break
+            except LLMTranslationError as exc:
                 constraint.status = "translation_failed"
                 constraint.formal_representation = None
                 await _log.awarning(

@@ -27,6 +27,10 @@
     </details>
     {% elif constraint.status == "translation_failed" %}
     <p><span badge data-variant="error">errore traduzione</span> Impossibile tradurre il vincolo. Prova a riformularlo.</p>
+    <form method="post" action="/orario/{{ timetable.id }}/vincoli/verifica">
+      {{ csrf_input | safe }}
+      <button type="submit" class="small outline">Riprova</button>
+    </form>
     {% elif constraint.status == "verified" %}
     <p><span badge data-variant="success">verificato</span> {{ constraint.formal_representation.description }}</p>
     {% elif constraint.status == "rejected" %}

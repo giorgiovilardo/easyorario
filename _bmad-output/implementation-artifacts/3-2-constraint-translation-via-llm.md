@@ -1,6 +1,6 @@
 # Story 3.2: Constraint Translation via LLM
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- Prerequisites: Story 2.2 (Constraint Input) and Story 3.1 (LLM Endpoint Configuration) MUST be completed before starting this story. -->
@@ -899,6 +899,36 @@ Claude Opus 4.6
 - `tests/services/test_constraint.py` (added 8 translation orchestration tests)
 - `tests/controllers/test_constraint.py` (added 9 verification route tests)
 
+## Senior Developer Review (AI)
+
+**Reviewer:** MasterArchitect on 2026-02-20
+**Outcome:** Changes Requested → Fixed
+
+### Issues Found & Fixed (7 total: 2 HIGH, 3 MEDIUM, 2 LOW)
+
+1. **[HIGH] Missing "Riprova" retry button (AC #3, #8)** — Added retry POST form button on verification page for failed constraints. Updated `translate_pending_constraints` to also retry `translation_failed` constraints. Added `has_failed` context variable and "Riprova traduzione" button on constraint list page.
+2. **[HIGH] Missing flash message on redirect to /impostazioni (AC #6)** — Added `?message=llm_config_required` query parameter to redirect URL. Updated settings controller GET to read the message param and display it.
+3. **[MEDIUM] No fail-fast on LLMConfigError** — Separated `LLMConfigError` from `LLMTranslationError` in the catch. On config error (bad API key), loop stops immediately and marks all remaining constraints as failed.
+4. **[MEDIUM] Missing controller test for failure rendering** — Added `test_post_verifica_shows_error_badge_on_failure` (error badge, count, retry button), `test_post_verifica_redirect_includes_flash_message`, and `test_settings_page_shows_flash_message_from_query`.
+5. **[MEDIUM] Ownership check after LLM config check** — Reordered POST `/verifica` to check timetable ownership before LLM config, ensuring consistent 403 behavior.
+6. **[LOW] No test for LLMConfigError in service loop** — Added `test_translate_pending_constraints_fails_fast_on_config_error` (verifies single API call, all three marked failed).
+7. **[LOW] Rough max_slots calculation** — Changed from `weekly_hours // 6` to `min(weekly_hours // 5, 8)` for more accurate Italian school schedule modeling.
+
+### Files Modified (review fixes)
+
+- `easyorario/services/constraint.py` (fail-fast, retry failed, max_slots fix)
+- `easyorario/controllers/constraint.py` (ownership order, has_failed context, flash message param)
+- `easyorario/controllers/settings.py` (read message query param)
+- `templates/pages/timetable_verification.html` (retry button)
+- `templates/pages/timetable_constraints.html` (has_failed / retry button)
+- `tests/services/test_constraint.py` (+2 tests: config error fail-fast, retry failed)
+- `tests/controllers/test_constraint.py` (+3 tests: failure rendering, flash message redirect, settings flash)
+
+### Test Results After Fixes
+
+161 passed (was 156), 0 failures. `just check` clean.
+
 ## Change Log
 
 - 2026-02-20: Implemented constraint translation via LLM (Story 3.2) — Pydantic schema model for structured outputs, LLM translation service, constraint service orchestration, verification controller routes, verification template, 28 new tests (156 total)
+- 2026-02-20: Code review fixes — retry button, flash message, fail-fast on config error, ownership check ordering, 5 new tests (161 total)

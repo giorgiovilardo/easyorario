@@ -41,10 +41,14 @@
     {% endfor %}
   </section>
 
-  {% if has_pending %}
+  {% if has_pending or has_failed %}
   <form method="post" action="/orario/{{ timetable.id }}/vincoli/verifica">
     {{ csrf_input | safe }}
+    {% if has_pending %}
     <button type="submit" class="w-100 outline">Verifica vincoli</button>
+    {% else %}
+    <button type="submit" class="w-100 outline">Riprova traduzione</button>
+    {% endif %}
   </form>
   {% endif %}
 

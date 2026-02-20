@@ -366,3 +366,46 @@ async def test_verification_page_shows_collapsible_json(authenticated_client, ti
     response = await authenticated_client.post(vincoli_url + "/verifica", headers={"x-csrftoken": csrf})
     assert "<details>" in response.text
     assert "teacher_unavailable" in response.text
+
+
+async def test_post_verifica_shows_error_badge_on_failure(authenticated_client, timetable_data, monkeypatch):
+    """Failed translations show error badge, failed count, and retry button."""
+    await _set_llm_config(authenticated_client, monkeypatch)
+    vincoli_url = await _create_timetable_with_constraints(authenticated_client, timetable_data)
+
+    from easyorario.exceptions import LLMTranslationError
+
+    async def mock_translate(self, **kwargs):
+        raise LLMTranslationError("llm_translation_failed")
+
+    monkeypatch.setattr("easyorario.services.llm.LLMService.translate_constraint", mock_translate)
+
+    csrf = _get_csrf_token(authenticated_client)
+    response = await authenticated_client.post(
+        vincoli_url + "/verifica",
+        headers={"x-csrftoken": csrf},
+    )
+    assert response.status_code == 200
+    assert "errore traduzione" in response.text
+    assert "2 errori" in response.text
+    assert "Riprova" in response.text
+
+
+async def test_post_verifica_redirect_includes_flash_message(authenticated_client, timetable_data):
+    """AC #6: Redirect to /impostazioni includes message query parameter."""
+    vincoli_url = await _create_timetable_with_constraints(authenticated_client, timetable_data)
+    csrf = _get_csrf_token(authenticated_client)
+    response = await authenticated_client.post(
+        vincoli_url + "/verifica",
+        headers={"x-csrftoken": csrf},
+        follow_redirects=False,
+    )
+    assert response.status_code in (301, 302, 303)
+    assert "message=llm_config_required" in response.headers["location"]
+
+
+async def test_settings_page_shows_flash_message_from_query(authenticated_client, timetable_data):
+    """Settings page displays error when message query param is provided."""
+    response = await authenticated_client.get("/impostazioni?message=llm_config_required")
+    assert response.status_code == 200
+    assert "Configura" in response.text

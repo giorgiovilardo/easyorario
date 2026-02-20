@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from easyorario.exceptions import InvalidConstraintDataError, LLMTranslationError
+from easyorario.exceptions import InvalidConstraintDataError, LLMConfigError, LLMTranslationError
 from easyorario.models.constraint import Constraint
 from easyorario.models.timetable import Timetable
 from easyorario.repositories.constraint import ConstraintRepository
@@ -259,3 +259,44 @@ async def test_translate_pending_constraints_builds_timetable_context(
     assert ctx["weekly_hours"] == 30
     assert "Matematica" in ctx["subjects"]
     assert "max_slots" in ctx
+
+
+async def test_translate_pending_constraints_fails_fast_on_config_error(
+    db_session: AsyncSession, db_timetable: Timetable, constraint_service: ConstraintService, monkeypatch
+):
+    """LLMConfigError stops the loop and marks all remaining constraints as failed."""
+    await _add_pending_constraint(db_session, db_timetable, "Constraint 1")
+    await _add_pending_constraint(db_session, db_timetable, "Constraint 2")
+    await _add_pending_constraint(db_session, db_timetable, "Constraint 3")
+
+    mock_translate = AsyncMock(side_effect=LLMConfigError("llm_auth_failed"))
+    monkeypatch.setattr(constraint_service.llm_service, "translate_constraint", mock_translate)
+
+    results = await constraint_service.translate_pending_constraints(
+        timetable=db_timetable, llm_config=_make_llm_config()
+    )
+    # Only one API call should have been made (fail-fast)
+    assert mock_translate.call_count == 1
+    # All three should be marked as failed
+    failed = [c for c in results if c.status == "translation_failed"]
+    assert len(failed) == 3
+
+
+async def test_translate_pending_constraints_retries_previously_failed(
+    db_session: AsyncSession, db_timetable: Timetable, constraint_service: ConstraintService, monkeypatch
+):
+    """Previously failed constraints are retried on subsequent translate calls."""
+    c = await _add_pending_constraint(db_session, db_timetable, "Previously failed")
+    c.status = "translation_failed"
+    c.formal_representation = None
+    await db_session.flush()
+
+    mock_translate = AsyncMock(return_value=VALID_TRANSLATION)
+    monkeypatch.setattr(constraint_service.llm_service, "translate_constraint", mock_translate)
+
+    results = await constraint_service.translate_pending_constraints(
+        timetable=db_timetable, llm_config=_make_llm_config()
+    )
+    assert mock_translate.call_count == 1
+    assert results[0].status == "translated"
+    assert results[0].formal_representation == VALID_TRANSLATION
