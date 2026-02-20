@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Verifica vincoli — {{ timetable.class_identifier }} — Easyorario{% endblock %}
+{% block content %}
+<div class="container" style="--container-max: 640px;">
+  <h1>Verifica vincoli — {{ timetable.class_identifier }}</h1>
+
+  {% if translated_count or failed_count %}
+  <p>
+    {% if translated_count %}<span badge data-variant="success">{{ translated_count }} tradotti</span>{% endif %}
+    {% if failed_count %}<span badge data-variant="error">{{ failed_count }} errori</span>{% endif %}
+  </p>
+  {% endif %}
+
+  {% for constraint in constraints %}
+  {% if constraint.status in ["translated", "translation_failed", "verified", "rejected"] %}
+  <article class="card">
+    <p><strong>Vincolo originale:</strong> {{ constraint.natural_language_text }}</p>
+
+    {% if constraint.status == "translated" and constraint.formal_representation %}
+    <p>
+      <span badge data-variant="warning">tradotto</span>
+      <strong>Interpretazione:</strong> {{ constraint.formal_representation.description }}
+    </p>
+    <details>
+      <summary>Dettagli tecnici (JSON)</summary>
+      <pre><code>{{ constraint.formal_representation | tojson(indent=2) }}</code></pre>
+    </details>
+    {% elif constraint.status == "translation_failed" %}
+    <p><span badge data-variant="error">errore traduzione</span> Impossibile tradurre il vincolo. Prova a riformularlo.</p>
+    {% elif constraint.status == "verified" %}
+    <p><span badge data-variant="success">verificato</span> {{ constraint.formal_representation.description }}</p>
+    {% elif constraint.status == "rejected" %}
+    <p><span badge data-variant="error">rifiutato</span></p>
+    {% endif %}
+  </article>
+  {% endif %}
+  {% endfor %}
+
+  <div class="hstack">
+    <a href="/orario/{{ timetable.id }}/vincoli" class="button outline">Torna ai vincoli</a>
+  </div>
+</div>
+{% endblock %}

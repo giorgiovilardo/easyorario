@@ -1,4 +1,4 @@
-"""Constraint controller — add and list scheduling constraints."""
+"""Constraint controller — add, list, and verify scheduling constraints."""
 
 import uuid
 from dataclasses import dataclass
@@ -15,6 +15,7 @@ from easyorario.guards.auth import requires_responsible_professor
 from easyorario.i18n.errors import MESSAGES
 from easyorario.repositories.timetable import TimetableRepository
 from easyorario.services.constraint import ConstraintService
+from easyorario.services.llm import get_llm_config
 
 
 @dataclass
@@ -23,7 +24,7 @@ class ConstraintFormData:
 
 
 class ConstraintController(Controller):
-    """Constraint input and listing for a timetable."""
+    """Constraint input, listing, and verification for a timetable."""
 
     path = "/orario/{timetable_id:uuid}/vincoli"
 
@@ -83,3 +84,67 @@ class ConstraintController(Controller):
                     "user": request.user,
                 },
             )
+
+    @post("/verifica", guards=[requires_responsible_professor])
+    async def translate_constraints(
+        self,
+        request: Request,
+        timetable_id: uuid.UUID,
+        timetable_repo: TimetableRepository,
+        constraint_service: ConstraintService,
+    ) -> Template | Redirect:
+        """Trigger LLM translation of pending constraints and render verification page."""
+        llm_config = get_llm_config(request.session)
+        if not llm_config:
+            return Redirect(path="/impostazioni")
+
+        timetable = await timetable_repo.get(timetable_id)
+        if timetable.owner_id != request.user.id:
+            raise NotAuthorizedException(detail="Insufficient permissions")
+
+        constraints = await constraint_service.translate_pending_constraints(
+            timetable=timetable,
+            llm_config=llm_config,
+        )
+
+        translated_count = sum(1 for c in constraints if c.status == "translated")
+        failed_count = sum(1 for c in constraints if c.status == "translation_failed")
+
+        return Template(
+            template_name="pages/timetable_verification.html",
+            context={
+                "timetable": timetable,
+                "constraints": constraints,
+                "translated_count": translated_count,
+                "failed_count": failed_count,
+                "user": request.user,
+            },
+        )
+
+    @get("/verifica", guards=[requires_responsible_professor])
+    async def show_verification(
+        self,
+        request: Request,
+        timetable_id: uuid.UUID,
+        timetable_repo: TimetableRepository,
+        constraint_service: ConstraintService,
+    ) -> Template:
+        """Show already-translated constraints without re-translating."""
+        timetable = await timetable_repo.get(timetable_id)
+        if timetable.owner_id != request.user.id:
+            raise NotAuthorizedException(detail="Insufficient permissions")
+
+        constraints = await constraint_service.list_constraints(timetable_id=timetable_id)
+        translated_count = sum(1 for c in constraints if c.status == "translated")
+        failed_count = sum(1 for c in constraints if c.status == "translation_failed")
+
+        return Template(
+            template_name="pages/timetable_verification.html",
+            context={
+                "timetable": timetable,
+                "constraints": constraints,
+                "translated_count": translated_count,
+                "failed_count": failed_count,
+                "user": request.user,
+            },
+        )

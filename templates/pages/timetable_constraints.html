@@ -26,6 +26,10 @@
       <p>
         {% if constraint.status == "pending" %}
         <span badge>in attesa</span>
+        {% elif constraint.status == "translated" %}
+        <span badge data-variant="warning">tradotto</span>
+        {% elif constraint.status == "translation_failed" %}
+        <span badge data-variant="error">errore traduzione</span>
         {% elif constraint.status == "verified" %}
         <span badge data-variant="success">verificato</span>
         {% elif constraint.status == "rejected" %}
@@ -38,7 +42,10 @@
   </section>
 
   {% if has_pending %}
-  <a href="/orario/{{ timetable.id }}/vincoli/verifica" class="button outline w-100">Verifica vincoli</a>
+  <form method="post" action="/orario/{{ timetable.id }}/vincoli/verifica">
+    {{ csrf_input | safe }}
+    <button type="submit" class="w-100 outline">Verifica vincoli</button>
+  </form>
   {% endif %}
 
   {% else %}

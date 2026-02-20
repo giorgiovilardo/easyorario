@@ -150,3 +150,219 @@ async def test_get_vincoli_for_nonexistent_timetable_returns_404(authenticated_c
     """Nonexistent timetable ID returns 404."""
     response = await authenticated_client.get(f"/orario/{uuid.uuid4()}/vincoli")
     assert response.status_code == 404
+
+
+# --- Verification route tests (Story 3.2) ---
+
+VALID_TRANSLATION = {
+    "constraint_type": "teacher_unavailable",
+    "description": "Prof. Rossi non disponibile lunedì ore 1-3",
+    "teacher": "Prof. Rossi",
+    "subject": None,
+    "days": ["lunedì"],
+    "time_slots": [1, 2, 3],
+    "max_consecutive_hours": None,
+    "room": None,
+    "notes": None,
+}
+
+
+async def _set_llm_config(client, monkeypatch):
+    """Helper: store LLM config in session via /impostazioni POST."""
+
+    async def mock_test(self, base_url, api_key, model_id):
+        return None
+
+    monkeypatch.setattr("easyorario.services.llm.LLMService.test_connectivity", mock_test)
+    await client.get("/impostazioni")
+    csrf = _get_csrf_token(client)
+    await client.post(
+        "/impostazioni",
+        data={"base_url": "https://api.example.com/v1", "api_key": "sk-test", "model_id": "gpt-4o"},
+        headers={"x-csrftoken": csrf},
+    )
+
+
+async def _create_timetable_with_constraints(client, timetable_data):
+    """Create a timetable and add constraints, return the vincoli URL."""
+    vincoli_url = await _create_timetable(client, timetable_data)
+    await client.get(vincoli_url)
+    csrf = _get_csrf_token(client)
+    for text in ["Prof. Rossi non può il lunedì mattina", "Matematica massimo 2 ore consecutive"]:
+        await client.post(
+            vincoli_url,
+            data={"text": text},
+            headers={"x-csrftoken": csrf},
+            follow_redirects=False,
+        )
+    return vincoli_url
+
+
+async def test_post_verifica_translates_and_renders_page(authenticated_client, timetable_data, monkeypatch):
+    """AC #1: POST /verifica translates pending constraints and renders verification page."""
+    await _set_llm_config(authenticated_client, monkeypatch)
+    vincoli_url = await _create_timetable_with_constraints(authenticated_client, timetable_data)
+
+    async def mock_translate(self, **kwargs):
+        return VALID_TRANSLATION
+
+    monkeypatch.setattr("easyorario.services.llm.LLMService.translate_constraint", mock_translate)
+
+    csrf = _get_csrf_token(authenticated_client)
+    response = await authenticated_client.post(
+        vincoli_url + "/verifica",
+        headers={"x-csrftoken": csrf},
+    )
+    assert response.status_code == 200
+    assert "Prof. Rossi non disponibile" in response.text
+    assert "Verifica vincoli" in response.text
+
+
+async def test_post_verifica_as_professor_returns_403(authenticated_professor_client, timetable_data, monkeypatch):
+    """Role guard blocks Professor (not Responsible Professor)."""
+    response = await authenticated_professor_client.post(
+        f"/orario/{uuid.uuid4()}/vincoli/verifica",
+        headers={"x-csrftoken": _get_csrf_token(authenticated_professor_client)},
+    )
+    assert response.status_code == 403
+
+
+async def test_post_verifica_without_llm_config_redirects(authenticated_client, timetable_data):
+    """AC #6: No LLM config → redirect to /impostazioni."""
+    vincoli_url = await _create_timetable_with_constraints(authenticated_client, timetable_data)
+    csrf = _get_csrf_token(authenticated_client)
+    response = await authenticated_client.post(
+        vincoli_url + "/verifica",
+        headers={"x-csrftoken": csrf},
+        follow_redirects=False,
+    )
+    assert response.status_code in (301, 302, 303)
+    assert "/impostazioni" in response.headers["location"]
+
+
+async def test_get_verifica_shows_translated_constraints(authenticated_client, timetable_data, monkeypatch):
+    """GET /verifica shows already-translated constraints without re-translating."""
+    await _set_llm_config(authenticated_client, monkeypatch)
+    vincoli_url = await _create_timetable_with_constraints(authenticated_client, timetable_data)
+
+    async def mock_translate(self, **kwargs):
+        return VALID_TRANSLATION
+
+    monkeypatch.setattr("easyorario.services.llm.LLMService.translate_constraint", mock_translate)
+
+    # First POST to translate
+    csrf = _get_csrf_token(authenticated_client)
+    await authenticated_client.post(vincoli_url + "/verifica", headers={"x-csrftoken": csrf})
+
+    # Now GET should show translated constraints
+    response = await authenticated_client.get(vincoli_url + "/verifica")
+    assert response.status_code == 200
+    assert "Prof. Rossi non disponibile" in response.text
+
+
+async def test_post_verifica_for_non_owned_timetable_returns_403(authenticated_client, timetable_data, monkeypatch):
+    """Ownership check: another user's timetable returns 403."""
+    await _set_llm_config(authenticated_client, monkeypatch)
+    vincoli_url = await _create_timetable_with_constraints(authenticated_client, timetable_data)
+
+    # Logout and login as different user
+    csrf = _get_csrf_token(authenticated_client)
+    await authenticated_client.post("/esci", headers={"x-csrftoken": csrf}, follow_redirects=False)
+    await authenticated_client.get("/registrati")
+    csrf = _get_csrf_token(authenticated_client)
+    await authenticated_client.post(
+        "/registrati",
+        data={"email": "other@example.com", "password": "password123", "password_confirm": "password123"},
+        headers={"x-csrftoken": csrf},
+    )
+    await authenticated_client.get("/accedi")
+    csrf = _get_csrf_token(authenticated_client)
+    await authenticated_client.post(
+        "/accedi",
+        data={"email": "other@example.com", "password": "password123"},
+        headers={"x-csrftoken": csrf},
+        follow_redirects=False,
+    )
+
+    # Set LLM config for new user
+    await _set_llm_config(authenticated_client, monkeypatch)
+
+    csrf = _get_csrf_token(authenticated_client)
+    response = await authenticated_client.post(
+        vincoli_url + "/verifica",
+        headers={"x-csrftoken": csrf},
+    )
+    assert response.status_code == 403
+
+
+async def test_post_verifica_with_no_pending_shows_existing(authenticated_client, timetable_data, monkeypatch):
+    """AC #7: No pending constraints → page renders with already-translated constraints."""
+    await _set_llm_config(authenticated_client, monkeypatch)
+    vincoli_url = await _create_timetable_with_constraints(authenticated_client, timetable_data)
+
+    async def mock_translate(self, **kwargs):
+        return VALID_TRANSLATION
+
+    monkeypatch.setattr("easyorario.services.llm.LLMService.translate_constraint", mock_translate)
+
+    # Translate once
+    csrf = _get_csrf_token(authenticated_client)
+    await authenticated_client.post(vincoli_url + "/verifica", headers={"x-csrftoken": csrf})
+
+    # POST again — no pending constraints, should show existing
+    response = await authenticated_client.post(
+        vincoli_url + "/verifica",
+        headers={"x-csrftoken": csrf},
+    )
+    assert response.status_code == 200
+    assert "Prof. Rossi non disponibile" in response.text
+
+
+async def test_post_verifica_shows_translation_counts(authenticated_client, timetable_data, monkeypatch):
+    """Page shows translated and failed counts."""
+    await _set_llm_config(authenticated_client, monkeypatch)
+    vincoli_url = await _create_timetable_with_constraints(authenticated_client, timetable_data)
+
+    async def mock_translate(self, **kwargs):
+        return VALID_TRANSLATION
+
+    monkeypatch.setattr("easyorario.services.llm.LLMService.translate_constraint", mock_translate)
+
+    csrf = _get_csrf_token(authenticated_client)
+    response = await authenticated_client.post(
+        vincoli_url + "/verifica",
+        headers={"x-csrftoken": csrf},
+    )
+    assert response.status_code == 200
+    assert "2 tradotti" in response.text
+
+
+async def test_verification_page_shows_constraint_description(authenticated_client, timetable_data, monkeypatch):
+    """Card shows formal_representation.description (human-readable interpretation)."""
+    await _set_llm_config(authenticated_client, monkeypatch)
+    vincoli_url = await _create_timetable_with_constraints(authenticated_client, timetable_data)
+
+    async def mock_translate(self, **kwargs):
+        return VALID_TRANSLATION
+
+    monkeypatch.setattr("easyorario.services.llm.LLMService.translate_constraint", mock_translate)
+
+    csrf = _get_csrf_token(authenticated_client)
+    response = await authenticated_client.post(vincoli_url + "/verifica", headers={"x-csrftoken": csrf})
+    assert "Prof. Rossi non disponibile lunedì ore 1-3" in response.text
+
+
+async def test_verification_page_shows_collapsible_json(authenticated_client, timetable_data, monkeypatch):
+    """Card has <details> with JSON output."""
+    await _set_llm_config(authenticated_client, monkeypatch)
+    vincoli_url = await _create_timetable_with_constraints(authenticated_client, timetable_data)
+
+    async def mock_translate(self, **kwargs):
+        return VALID_TRANSLATION
+
+    monkeypatch.setattr("easyorario.services.llm.LLMService.translate_constraint", mock_translate)
+
+    csrf = _get_csrf_token(authenticated_client)
+    response = await authenticated_client.post(vincoli_url + "/verifica", headers={"x-csrftoken": csrf})
+    assert "<details>" in response.text
+    assert "teacher_unavailable" in response.text
