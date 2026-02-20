@@ -1,18 +1,39 @@
 """Tests for the ConstraintService."""
 
+from unittest.mock import AsyncMock
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from easyorario.exceptions import InvalidConstraintDataError
+from easyorario.exceptions import InvalidConstraintDataError, LLMTranslationError
+from easyorario.models.constraint import Constraint
 from easyorario.models.timetable import Timetable
 from easyorario.repositories.constraint import ConstraintRepository
 from easyorario.services.constraint import ConstraintService
+from easyorario.services.llm import LLMService
+
+VALID_TRANSLATION = {
+    "constraint_type": "teacher_unavailable",
+    "description": "Prof. Rossi non è disponibile il lunedì nelle ore 1-3",
+    "teacher": "Prof. Rossi",
+    "subject": None,
+    "days": ["lunedì"],
+    "time_slots": [1, 2, 3],
+    "max_consecutive_hours": None,
+    "room": None,
+    "notes": None,
+}
 
 
 @pytest.fixture
-async def constraint_service(db_session: AsyncSession) -> ConstraintService:
+def llm_service() -> LLMService:
+    return LLMService()
+
+
+@pytest.fixture
+async def constraint_service(db_session: AsyncSession, llm_service: LLMService) -> ConstraintService:
     repo = ConstraintRepository(session=db_session)
-    return ConstraintService(constraint_repo=repo)
+    return ConstraintService(constraint_repo=repo, llm_service=llm_service)
 
 
 async def test_add_constraint_with_valid_text_creates_pending(
@@ -72,3 +93,169 @@ async def test_list_constraints_returns_ordered(
     assert len(results) == 2
     assert results[0].natural_language_text == "Vincolo 1"
     assert results[1].natural_language_text == "Vincolo 2"
+
+
+# --- translate_pending_constraints tests ---
+
+
+async def _add_pending_constraint(db_session: AsyncSession, timetable: Timetable, text: str) -> Constraint:
+    """Helper: add a pending constraint directly to the DB."""
+    c = Constraint(timetable_id=timetable.id, natural_language_text=text)
+    db_session.add(c)
+    await db_session.flush()
+    return c
+
+
+def _make_llm_config() -> dict[str, str]:
+    return {"base_url": "https://api.example.com/v1", "api_key": "sk-test", "model_id": "gpt-4o"}
+
+
+async def test_constraint_service_accepts_llm_service_dependency(db_session: AsyncSession):
+    """ConstraintService constructor accepts LLMService as a dependency."""
+    repo = ConstraintRepository(session=db_session)
+    llm = LLMService()
+    svc = ConstraintService(constraint_repo=repo, llm_service=llm)
+    assert svc.llm_service is llm
+
+
+async def test_translate_pending_constraints_translates_all_pending(
+    db_session: AsyncSession, db_timetable: Timetable, constraint_service: ConstraintService, monkeypatch
+):
+    """All pending constraints should be translated and stored."""
+    await _add_pending_constraint(db_session, db_timetable, "Vincolo 1")
+    await _add_pending_constraint(db_session, db_timetable, "Vincolo 2")
+
+    mock_translate = AsyncMock(return_value=VALID_TRANSLATION)
+    monkeypatch.setattr(constraint_service.llm_service, "translate_constraint", mock_translate)
+
+    results = await constraint_service.translate_pending_constraints(
+        timetable=db_timetable, llm_config=_make_llm_config()
+    )
+    assert mock_translate.call_count == 2
+    translated = [c for c in results if c.status == "translated"]
+    assert len(translated) == 2
+    assert translated[0].formal_representation == VALID_TRANSLATION
+
+
+async def test_translate_pending_constraints_partial_failure(
+    db_session: AsyncSession, db_timetable: Timetable, constraint_service: ConstraintService, monkeypatch
+):
+    """When some translations fail, successful ones still get translated status."""
+    await _add_pending_constraint(db_session, db_timetable, "Good constraint")
+    await _add_pending_constraint(db_session, db_timetable, "Bad constraint")
+
+    call_count = 0
+
+    async def mock_translate(**kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 2:
+            raise LLMTranslationError("llm_translation_failed")
+        return VALID_TRANSLATION
+
+    monkeypatch.setattr(constraint_service.llm_service, "translate_constraint", mock_translate)
+
+    results = await constraint_service.translate_pending_constraints(
+        timetable=db_timetable, llm_config=_make_llm_config()
+    )
+    translated = [c for c in results if c.status == "translated"]
+    failed = [c for c in results if c.status == "translation_failed"]
+    assert len(translated) == 1
+    assert len(failed) == 1
+    assert failed[0].formal_representation is None
+
+
+async def test_translate_pending_constraints_no_pending_returns_existing(
+    db_session: AsyncSession, db_timetable: Timetable, constraint_service: ConstraintService, monkeypatch
+):
+    """When there are no pending constraints, LLM is not called and existing constraints are returned."""
+    c = await _add_pending_constraint(db_session, db_timetable, "Already done")
+    c.status = "translated"
+    c.formal_representation = VALID_TRANSLATION
+    await db_session.flush()
+
+    mock_translate = AsyncMock(return_value=VALID_TRANSLATION)
+    monkeypatch.setattr(constraint_service.llm_service, "translate_constraint", mock_translate)
+
+    results = await constraint_service.translate_pending_constraints(
+        timetable=db_timetable, llm_config=_make_llm_config()
+    )
+    assert mock_translate.call_count == 0
+    assert len(results) == 1
+    assert results[0].status == "translated"
+
+
+async def test_translate_pending_constraints_updates_status_to_translated(
+    db_session: AsyncSession, db_timetable: Timetable, constraint_service: ConstraintService, monkeypatch
+):
+    """Status changes from 'pending' to 'translated' on success."""
+    c = await _add_pending_constraint(db_session, db_timetable, "Test constraint")
+    assert c.status == "pending"
+
+    mock_translate = AsyncMock(return_value=VALID_TRANSLATION)
+    monkeypatch.setattr(constraint_service.llm_service, "translate_constraint", mock_translate)
+
+    results = await constraint_service.translate_pending_constraints(
+        timetable=db_timetable, llm_config=_make_llm_config()
+    )
+    assert results[0].status == "translated"
+    assert results[0].formal_representation == VALID_TRANSLATION
+
+
+async def test_translate_pending_constraints_updates_status_to_failed(
+    db_session: AsyncSession, db_timetable: Timetable, constraint_service: ConstraintService, monkeypatch
+):
+    """Status changes from 'pending' to 'translation_failed' on LLMTranslationError."""
+    await _add_pending_constraint(db_session, db_timetable, "Bad constraint")
+
+    mock_translate = AsyncMock(side_effect=LLMTranslationError("llm_translation_failed"))
+    monkeypatch.setattr(constraint_service.llm_service, "translate_constraint", mock_translate)
+
+    results = await constraint_service.translate_pending_constraints(
+        timetable=db_timetable, llm_config=_make_llm_config()
+    )
+    assert results[0].status == "translation_failed"
+    assert results[0].formal_representation is None
+
+
+async def test_translate_pending_constraints_skips_non_pending(
+    db_session: AsyncSession, db_timetable: Timetable, constraint_service: ConstraintService, monkeypatch
+):
+    """Already translated/verified constraints are not re-translated."""
+    c1 = await _add_pending_constraint(db_session, db_timetable, "Already translated")
+    c1.status = "translated"
+    c1.formal_representation = VALID_TRANSLATION
+    await _add_pending_constraint(db_session, db_timetable, "Pending one")
+    await db_session.flush()
+
+    mock_translate = AsyncMock(return_value=VALID_TRANSLATION)
+    monkeypatch.setattr(constraint_service.llm_service, "translate_constraint", mock_translate)
+
+    results = await constraint_service.translate_pending_constraints(
+        timetable=db_timetable, llm_config=_make_llm_config()
+    )
+    assert mock_translate.call_count == 1  # only the pending one
+    assert len(results) == 2
+
+
+async def test_translate_pending_constraints_builds_timetable_context(
+    db_session: AsyncSession, db_timetable: Timetable, constraint_service: ConstraintService, monkeypatch
+):
+    """Timetable context passed to LLMService has correct keys."""
+    await _add_pending_constraint(db_session, db_timetable, "Test")
+
+    captured_kwargs: dict = {}
+
+    async def mock_translate(**kwargs):
+        captured_kwargs.update(kwargs)
+        return VALID_TRANSLATION
+
+    monkeypatch.setattr(constraint_service.llm_service, "translate_constraint", mock_translate)
+
+    await constraint_service.translate_pending_constraints(timetable=db_timetable, llm_config=_make_llm_config())
+
+    ctx = captured_kwargs["timetable_context"]
+    assert ctx["class_identifier"] == "3A"
+    assert ctx["weekly_hours"] == 30
+    assert "Matematica" in ctx["subjects"]
+    assert "max_slots" in ctx
