@@ -72,6 +72,7 @@ Long-running operations (Z3 solving, LLM translation) use Litestar background ta
 - `templates/base.html` → `templates/pages/` → `templates/partials/`
 - Oat UI via CDN (unpkg @knadh/oat), custom CSS only for timetable grid
 - No JS framework, no build step. Minimal vanilla JS for polling.
+- Use the `/oatsmith` skill to write, edit, and review templates.
 
 ## Development Workflow
 
