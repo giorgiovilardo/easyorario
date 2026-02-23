@@ -117,7 +117,9 @@ class ConstraintService:
         for c in verified:
             fr = c.formal_representation
             if not fr or not isinstance(fr, dict):
-                _log.warning("skipping_malformed_formal_representation", constraint_id=str(c.id))
+                _log.warning(
+                    "skipping_malformed_formal_representation", constraint_id=str(c.id)
+                )  # sync: no await in sync method
                 continue
             teacher = fr.get("teacher")
             if not teacher:
@@ -129,6 +131,8 @@ class ConstraintService:
             if len(constraints) < 2:
                 continue
             slot_map: dict[tuple[str, int], Constraint] = {}
+            # Track already-reported pairs to avoid duplicate warnings
+            reported_pairs: set[tuple[uuid.UUID, uuid.UUID]] = set()
             for c in constraints:
                 fr = c.formal_representation
                 if not fr:
@@ -141,20 +145,23 @@ class ConstraintService:
                     for slot in slots:
                         if (day, slot) in slot_map:
                             other = slot_map[(day, slot)]
+                            pair_key = (min(c.id, other.id), max(c.id, other.id))
+                            if pair_key in reported_pairs:
+                                continue
+                            reported_pairs.add(pair_key)
                             other_fr = other.formal_representation or {}
                             msg = MESSAGES["conflict_teacher_double_booking"].format(
                                 teacher=teacher,
                                 day=day,
                                 slot=slot,
                             )
+                            other_desc = other_fr.get("description", "")
+                            c_desc = fr.get("description", "")
                             warnings.append(
                                 ConflictWarning(
                                     conflict_type="teacher_double_booking",
                                     message=msg,
-                                    constraint_descriptions=[
-                                        other_fr.get("description", ""),
-                                        fr.get("description", ""),
-                                    ],
+                                    constraint_descriptions=[d for d in (other_desc, c_desc) if d],
                                 )
                             )
                         else:
@@ -174,6 +181,9 @@ class ConstraintService:
         for c in verified:
             fr = c.formal_representation
             if not fr or not isinstance(fr, dict):
+                continue
+            # Only count constraints that allocate teaching hours
+            if fr.get("constraint_type") != "subject_scheduling":
                 continue
             days = fr.get("days") or []
             slots = fr.get("time_slots") or []

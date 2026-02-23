@@ -720,7 +720,8 @@ async def test_constraints_page_shows_conflict_warning(authenticated_client, tim
     # Now GET /vincoli should show conflict warning
     response = await authenticated_client.get(vincoli_url)
     assert response.status_code == 200
-    assert "Attenzione" in response.text or "Conflitto" in response.text
+    assert "conflitti rilevati" in response.text
+    assert "Prof. Rossi" in response.text
 
 
 async def test_constraints_page_no_warning_when_no_conflicts(authenticated_client, timetable_data, monkeypatch):
@@ -739,7 +740,6 @@ async def test_constraints_page_no_warning_when_no_conflicts(authenticated_clien
 
     response = await authenticated_client.get(vincoli_url)
     assert response.status_code == 200
-    assert "Conflitto" not in response.text
     assert "conflitti rilevati" not in response.text
 
 
@@ -780,4 +780,5 @@ async def test_verification_page_shows_conflict_warning(authenticated_client, ti
     # Now GET /verifica should show conflict warning
     response = await authenticated_client.get(vincoli_url + "/verifica")
     assert response.status_code == 200
-    assert "Attenzione" in response.text or "Conflitto" in response.text
+    assert "conflitti rilevati" in response.text
+    assert "Prof. Rossi" in response.text
