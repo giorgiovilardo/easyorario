@@ -1,6 +1,6 @@
 # Story 3.3: Constraint Verification & Approval
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- Prerequisites: Story 3.2 (Constraint Translation via LLM) MUST be completed before starting this story. -->
@@ -491,22 +491,23 @@ Claude Opus 4.6
 
 ### Completion Notes List
 
-- Task 1: Added 3 Italian messages (`constraint_approved`, `constraint_rejected`, `constraint_not_translatable`) to `i18n/errors.py`. Confirmed `InvalidConstraintDataError` reuse — no new exception class needed.
+- Task 1: Added 1 Italian message (`constraint_not_translatable`) to `i18n/errors.py`. Confirmed `InvalidConstraintDataError` reuse — no new exception class needed.
 - Task 2: Implemented `verify_constraint` and `reject_constraint` in ConstraintService. Both validate timetable ownership (raises `NotAuthorizedException`) and status guard (raises `InvalidConstraintDataError`). `reject_constraint` clears `formal_representation` to None. Both log events via structlog.
-- Task 3: Added POST `/{constraint_id}/approva` and `/{constraint_id}/rifiuta` routes in ConstraintController. Both use `requires_responsible_professor` guard, check timetable ownership, and redirect to GET `/verifica` (PRG pattern). `InvalidConstraintDataError` suppressed with `contextlib.suppress` — stale-page scenario redirects gracefully.
+- Task 3: Added POST `/{constraint_id}/approva` and `/{constraint_id}/rifiuta` routes in ConstraintController. Both use `requires_responsible_professor` guard, check timetable ownership, and redirect to GET `/verifica` (PRG pattern). `InvalidConstraintDataError` caught and logged before redirect.
 - Task 4: Updated verification template with approve/reject buttons on translated cards, "Modifica e riprova" link on rejected cards, verified count badge, and "Genera orario" link (visible only when >=1 verified and 0 translated remaining). Updated both POST and GET handlers to pass `verified_count`.
 - Task 5: Verified constraint list template already shows "rifiutato" badge for rejected constraints. No code changes needed.
-- Task 6: 15 new tests (6 service + 9 controller) cover all specified test cases. TDD red-green-refactor cycle followed throughout. Total test count: 176 (up from 161).
+- Task 6: 16 new tests (6 service + 10 controller) cover all specified test cases. TDD red-green-refactor cycle followed throughout. Total test count: 177 (up from 161).
 
 ### Change Log
 
-- 2026-02-23: Implemented constraint verification & approval (Story 3.3) — approve/reject routes, service methods, template updates, 15 new tests
+- 2026-02-23: Implemented constraint verification & approval (Story 3.3) — approve/reject routes, service methods, template updates, 16 new tests
+- 2026-02-23: Code review fixes — removed redundant template computation, added null guard on verified cards, added reject ownership test, replaced contextlib.suppress with logged try/except, removed dead i18n messages, moved imports to module level
 
 ### File List
 
-- easyorario/i18n/errors.py (UPDATE: added 3 verification messages)
+- easyorario/i18n/errors.py (UPDATE: added constraint_not_translatable message)
 - easyorario/services/constraint.py (UPDATE: added verify_constraint and reject_constraint methods)
 - easyorario/controllers/constraint.py (UPDATE: added approve/reject POST routes, verified_count in context)
 - templates/pages/timetable_verification.html (UPDATE: approve/reject buttons, genera orario link, verified count badge, rejected constraint display)
 - tests/services/test_constraint.py (UPDATE: 6 new verification service tests)
-- tests/controllers/test_constraint.py (UPDATE: 9 new approval/rejection controller tests, 1 existing test updated)
+- tests/controllers/test_constraint.py (UPDATE: 10 new approval/rejection controller tests, 1 existing test updated)

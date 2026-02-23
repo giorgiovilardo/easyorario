@@ -1,5 +1,6 @@
 """Tests for ConstraintController."""
 
+import re
 import uuid
 
 import pytest
@@ -449,8 +450,6 @@ async def test_post_approva_sets_verified_and_redirects(authenticated_client, ti
     assert "Approva" in response.text
 
     # Extract constraint ID from the form action
-    import re
-
     match = re.search(r"/vincoli/([0-9a-f-]+)/approva", response.text)
     assert match, "Could not find approve form action in page"
     constraint_id = match.group(1)
@@ -474,8 +473,6 @@ async def test_post_rifiuta_sets_rejected_and_redirects(authenticated_client, ti
     vincoli_url, timetable_id = await _create_translated_constraint(authenticated_client, timetable_data, monkeypatch)
 
     response = await authenticated_client.get(vincoli_url + "/verifica")
-    import re
-
     match = re.search(r"/vincoli/([0-9a-f-]+)/rifiuta", response.text)
     assert match, "Could not find reject form action in page"
     constraint_id = match.group(1)
@@ -516,8 +513,6 @@ async def test_post_approva_non_owned_timetable_returns_403(authenticated_client
     vincoli_url, timetable_id = await _create_translated_constraint(authenticated_client, timetable_data, monkeypatch)
 
     response = await authenticated_client.get(vincoli_url + "/verifica")
-    import re
-
     match = re.search(r"/vincoli/([0-9a-f-]+)/approva", response.text)
     assert match
     constraint_id = match.group(1)
@@ -549,14 +544,48 @@ async def test_post_approva_non_owned_timetable_returns_403(authenticated_client
     assert response.status_code == 403
 
 
+async def test_post_rifiuta_non_owned_timetable_returns_403(authenticated_client, timetable_data, monkeypatch):
+    """AC #6: Cannot reject constraint on another user's timetable."""
+    vincoli_url, timetable_id = await _create_translated_constraint(authenticated_client, timetable_data, monkeypatch)
+
+    response = await authenticated_client.get(vincoli_url + "/verifica")
+    match = re.search(r"/vincoli/([0-9a-f-]+)/rifiuta", response.text)
+    assert match
+    constraint_id = match.group(1)
+
+    # Logout and login as different user
+    csrf = _get_csrf_token(authenticated_client)
+    await authenticated_client.post("/esci", headers={"x-csrftoken": csrf}, follow_redirects=False)
+    await authenticated_client.get("/registrati")
+    csrf = _get_csrf_token(authenticated_client)
+    await authenticated_client.post(
+        "/registrati",
+        data={"email": "other@example.com", "password": "password123", "password_confirm": "password123"},
+        headers={"x-csrftoken": csrf},
+    )
+    await authenticated_client.get("/accedi")
+    csrf = _get_csrf_token(authenticated_client)
+    await authenticated_client.post(
+        "/accedi",
+        data={"email": "other@example.com", "password": "password123"},
+        headers={"x-csrftoken": csrf},
+        follow_redirects=False,
+    )
+
+    csrf = _get_csrf_token(authenticated_client)
+    response = await authenticated_client.post(
+        f"/orario/{timetable_id}/vincoli/{constraint_id}/rifiuta",
+        headers={"x-csrftoken": csrf},
+    )
+    assert response.status_code == 403
+
+
 async def test_post_approva_non_translated_constraint_returns_error(authenticated_client, timetable_data, monkeypatch):
     """AC #7: Approving a non-translated constraint fails gracefully."""
     vincoli_url, timetable_id = await _create_translated_constraint(authenticated_client, timetable_data, monkeypatch)
 
     # Get constraint ID
     response = await authenticated_client.get(vincoli_url + "/verifica")
-    import re
-
     match = re.search(r"/vincoli/([0-9a-f-]+)/approva", response.text)
     assert match
     constraint_id = match.group(1)
@@ -599,8 +628,6 @@ async def test_verification_page_shows_genera_link_when_all_verified(authenticat
 
     # Approve the constraint
     response = await authenticated_client.get(vincoli_url + "/verifica")
-    import re
-
     match = re.search(r"/vincoli/([0-9a-f-]+)/approva", response.text)
     assert match
     constraint_id = match.group(1)

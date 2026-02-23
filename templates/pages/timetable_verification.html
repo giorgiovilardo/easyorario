@@ -43,7 +43,7 @@
       <button type="submit" class="small outline">Riprova</button>
     </form>
     {% elif constraint.status == "verified" %}
-    <p><span badge data-variant="success">verificato</span> {{ constraint.formal_representation.description }}</p>
+    <p><span badge data-variant="success">verificato</span> {% if constraint.formal_representation %}{{ constraint.formal_representation.description }}{% endif %}</p>
     {% elif constraint.status == "rejected" %}
     <p><span badge data-variant="error">rifiutato</span></p>
     <p><a href="/orario/{{ timetable.id }}/vincoli">Modifica e riprova</a></p>
@@ -52,10 +52,7 @@
   {% endif %}
   {% endfor %}
 
-  {% set has_translated = constraints | selectattr("status", "equalto", "translated") | list | length > 0 %}
-  {% set verified_count_val = constraints | selectattr("status", "equalto", "verified") | list | length %}
-
-  {% if verified_count_val >= 1 and not has_translated %}
+  {% if verified_count >= 1 and not translated_count %}
   <a href="/orario/{{ timetable.id }}/genera" class="button w-100">Genera orario</a>
   {% endif %}
 
