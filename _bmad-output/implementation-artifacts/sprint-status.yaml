@@ -58,7 +58,7 @@ development_status:
   epic-3: in-progress
   3-1-llm-endpoint-configuration: done
   3-2-constraint-translation-via-llm: done
-  3-3-constraint-verification-approval: in-progress
+  3-3-constraint-verification-approval: review
   3-4-pre-solve-constraint-conflict-detection: backlog
   epic-3-retrospective: optional
 
