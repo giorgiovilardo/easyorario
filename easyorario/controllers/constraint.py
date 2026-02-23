@@ -1,10 +1,10 @@
 """Constraint controller — add, list, and verify scheduling constraints."""
 
-import contextlib
 import uuid
 from dataclasses import dataclass
 from typing import Annotated
 
+import structlog
 from litestar import Controller, Request, get, post
 from litestar.enums import RequestEncodingType
 from litestar.exceptions import NotAuthorizedException
@@ -17,6 +17,8 @@ from easyorario.i18n.errors import MESSAGES
 from easyorario.repositories.timetable import TimetableRepository
 from easyorario.services.constraint import ConstraintService
 from easyorario.services.llm import get_llm_config
+
+_log = structlog.get_logger()
 
 
 @dataclass
@@ -171,10 +173,14 @@ class ConstraintController(Controller):
         timetable = await timetable_repo.get(timetable_id)
         if timetable.owner_id != request.user.id:
             raise NotAuthorizedException(detail="Insufficient permissions")
-        with contextlib.suppress(InvalidConstraintDataError):
+        try:
             await constraint_service.verify_constraint(
                 constraint_id=constraint_id,
                 timetable_id=timetable_id,
+            )
+        except InvalidConstraintDataError:
+            await _log.awarning(
+                "approve_invalid_status", constraint_id=str(constraint_id), timetable_id=str(timetable_id)
             )
         return Redirect(path=f"/orario/{timetable_id}/vincoli/verifica")
 
@@ -191,9 +197,13 @@ class ConstraintController(Controller):
         timetable = await timetable_repo.get(timetable_id)
         if timetable.owner_id != request.user.id:
             raise NotAuthorizedException(detail="Insufficient permissions")
-        with contextlib.suppress(InvalidConstraintDataError):
+        try:
             await constraint_service.reject_constraint(
                 constraint_id=constraint_id,
                 timetable_id=timetable_id,
+            )
+        except InvalidConstraintDataError:
+            await _log.awarning(
+                "reject_invalid_status", constraint_id=str(constraint_id), timetable_id=str(timetable_id)
             )
         return Redirect(path=f"/orario/{timetable_id}/vincoli/verifica")
