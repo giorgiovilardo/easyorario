@@ -1,6 +1,6 @@
 # Story 3.4: Pre-Solve Constraint Conflict Detection
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- Prerequisites: Story 3.3 (Constraint Verification & Approval) MUST be completed before starting this story. -->
@@ -27,27 +27,27 @@ so that I can fix issues without waiting for the solver to fail.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add conflict detection logic to ConstraintService (AC: #1, #2, #5, #6)
-  - [ ] 1.1 Add `detect_conflicts(constraints: list[Constraint], timetable: Timetable) -> list[ConflictWarning]` method to ConstraintService
-  - [ ] 1.2 Implement teacher double-booking detection: find pairs of verified constraints where the same teacher is marked unavailable/scheduled on overlapping days+time_slots
-  - [ ] 1.3 Implement hour-total mismatch detection: sum up subject-related hour allocations from verified constraints and compare against `timetable.weekly_hours`
-  - [ ] 1.4 Define `ConflictWarning` as a simple dataclass with `conflict_type: str`, `message: str` (Italian), `constraint_descriptions: list[str]`
-  - [ ] 1.5 Skip constraints where `formal_representation` is None or missing required fields — log a warning via structlog, do not crash
+- [x] Task 1: Add conflict detection logic to ConstraintService (AC: #1, #2, #5, #6)
+  - [x] 1.1 Add `detect_conflicts(constraints: list[Constraint], timetable: Timetable) -> list[ConflictWarning]` method to ConstraintService
+  - [x] 1.2 Implement teacher double-booking detection: find pairs of verified constraints where the same teacher is marked unavailable/scheduled on overlapping days+time_slots
+  - [x] 1.3 Implement hour-total mismatch detection: sum up subject-related hour allocations from verified constraints and compare against `timetable.weekly_hours`
+  - [x] 1.4 Define `ConflictWarning` as a simple dataclass with `conflict_type: str`, `message: str` (Italian), `constraint_descriptions: list[str]`
+  - [x] 1.5 Skip constraints where `formal_representation` is None or missing required fields — log a warning via structlog, do not crash
 
-- [ ] Task 2: Add Italian i18n messages for conflict warnings (AC: #3)
-  - [ ] 2.1 Add conflict message templates to `easyorario/i18n/errors.py`: `conflict_teacher_double_booking`, `conflict_hour_total_mismatch`
+- [x] Task 2: Add Italian i18n messages for conflict warnings (AC: #3)
+  - [x] 2.1 Add conflict message templates to `easyorario/i18n/errors.py`: `conflict_teacher_double_booking`, `conflict_hour_total_mismatch`
 
-- [ ] Task 3: Integrate conflict detection into ConstraintController (AC: #3, #4, #5)
-  - [ ] 3.1 Update `GET /orario/{timetable_id}/vincoli` (list_constraints) to call `detect_conflicts()` on verified constraints and pass warnings to template context
-  - [ ] 3.2 Update `GET /orario/{timetable_id}/vincoli/verifica` (show_verification) to also run conflict detection and pass warnings to template context
+- [x] Task 3: Integrate conflict detection into ConstraintController (AC: #3, #4, #5)
+  - [x] 3.1 Update `GET /orario/{timetable_id}/vincoli` (list_constraints) to call `detect_conflicts()` on verified constraints and pass warnings to template context
+  - [x] 3.2 Update `GET /orario/{timetable_id}/vincoli/verifica` (show_verification) to also run conflict detection and pass warnings to template context
 
-- [ ] Task 4: Update templates to display conflict warnings (AC: #3, #4)
-  - [ ] 4.1 Update `timetable_constraints.html` — add an Oat UI alert section (warning variant) above the constraints list that renders each conflict warning with its message and referenced constraint descriptions
-  - [ ] 4.2 Update `timetable_verification.html` — add the same warning alert section above the constraint cards
+- [x] Task 4: Update templates to display conflict warnings (AC: #3, #4)
+  - [x] 4.1 Update `timetable_constraints.html` — add an Oat UI alert section (warning variant) above the constraints list that renders each conflict warning with its message and referenced constraint descriptions
+  - [x] 4.2 Update `timetable_verification.html` — add the same warning alert section above the constraint cards
 
-- [ ] Task 5: Write tests (AC: #1-#6)
-  - [ ] 5.1 `tests/services/test_constraint.py` (additions): test detect_conflicts finds teacher double-booking, test detect_conflicts finds hour-total mismatch, test detect_conflicts returns empty for non-conflicting constraints, test detect_conflicts skips non-verified constraints, test detect_conflicts skips constraints with None formal_representation, test detect_conflicts with no constraints returns empty
-  - [ ] 5.2 `tests/controllers/test_constraint.py` (additions): test constraints page shows warning when conflicts detected, test constraints page shows no warning when no conflicts, test verification page shows warning when conflicts detected
+- [x] Task 5: Write tests (AC: #1-#6)
+  - [x] 5.1 `tests/services/test_constraint.py` (additions): test detect_conflicts finds teacher double-booking, test detect_conflicts finds hour-total mismatch, test detect_conflicts returns empty for non-conflicting constraints, test detect_conflicts skips non-verified constraints, test detect_conflicts skips constraints with None formal_representation, test detect_conflicts with no constraints returns empty
+  - [x] 5.2 `tests/controllers/test_constraint.py` (additions): test constraints page shows warning when conflicts detected, test constraints page shows no warning when no conflicts, test verification page shows warning when conflicts detected
 
 ## Dev Notes
 
@@ -455,10 +455,34 @@ fa1e0ba story 3.3: finalize -- update story and sprint status to review
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
+No blocking issues encountered.
+
 ### Completion Notes List
 
+- Implemented `ConflictWarning` dataclass in `services/constraint.py` as a simple value object (not persisted)
+- Added `detect_conflicts()` synchronous method on `ConstraintService` with two private helpers: `_detect_teacher_double_bookings()` and `_detect_hour_total_mismatches()`
+- Detection filters to verified constraints only and skips None/malformed `formal_representation` with structlog warning
+- Added 2 Italian i18n messages: `conflict_teacher_double_booking`, `conflict_hour_total_mismatch`
+- Controller integration: all 3 code paths that render constraint templates (GET /vincoli, GET /verifica, POST /verifica) now pass `conflict_warnings` to template context
+- Template alert uses Oat UI `alert warning` class, positioned above constraints list/cards
+- 11 new tests added (8 service + 3 controller), total test count: 177 → 188, all passing
+- TDD approach followed: wrote failing tests first, then minimal implementation
+- Pyright fix: added `not fr` guard in inner loop and `or {}` pattern for optional dict access
+
+### Change Log
+
+- 2026-02-23: Story 3.4 implementation complete — pre-solve conflict detection for teacher double-bookings and hour-total mismatches
+
 ### File List
+
+- `easyorario/services/constraint.py` (UPDATED: added ConflictWarning dataclass, detect_conflicts method with private helpers)
+- `easyorario/i18n/errors.py` (UPDATED: added 2 conflict warning messages)
+- `easyorario/controllers/constraint.py` (UPDATED: call detect_conflicts in list_constraints, show_verification, translate_constraints, and add_constraint error path)
+- `templates/pages/timetable_constraints.html` (UPDATED: added conflict warning alert section)
+- `templates/pages/timetable_verification.html` (UPDATED: added conflict warning alert section)
+- `tests/services/test_constraint.py` (UPDATED: added 8 conflict detection service tests)
+- `tests/controllers/test_constraint.py` (UPDATED: added 3 conflict warning display controller tests)
