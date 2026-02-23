@@ -334,7 +334,7 @@ async def test_post_verifica_shows_translation_counts(authenticated_client, time
         headers={"x-csrftoken": csrf},
     )
     assert response.status_code == 200
-    assert "2 tradotti" in response.text
+    assert "2 da verificare" in response.text
 
 
 async def test_verification_page_shows_constraint_description(authenticated_client, timetable_data, monkeypatch):
@@ -409,3 +409,221 @@ async def test_settings_page_shows_flash_message_from_query(authenticated_client
     response = await authenticated_client.get("/impostazioni?message=llm_config_required")
     assert response.status_code == 200
     assert "Configura" in response.text
+
+
+# --- Verification approval/rejection tests (Story 3.3) ---
+
+
+async def _create_translated_constraint(client, timetable_data, monkeypatch):
+    """Helper: create a timetable with one translated constraint, return (vincoli_url, timetable_id)."""
+    vincoli_url = await _create_timetable(client, timetable_data)
+    timetable_id = vincoli_url.split("/orario/")[1].split("/vincoli")[0]
+
+    await client.get(vincoli_url)
+    csrf = _get_csrf_token(client)
+    await client.post(
+        vincoli_url,
+        data={"text": "Prof. Rossi non può il lunedì"},
+        headers={"x-csrftoken": csrf},
+        follow_redirects=False,
+    )
+
+    async def mock_translate(self, **kwargs):
+        return VALID_TRANSLATION
+
+    monkeypatch.setattr("easyorario.services.llm.LLMService.translate_constraint", mock_translate)
+
+    await _set_llm_config(client, monkeypatch)
+    csrf = _get_csrf_token(client)
+    await client.post(vincoli_url + "/verifica", headers={"x-csrftoken": csrf})
+
+    return vincoli_url, timetable_id
+
+
+async def test_post_approva_sets_verified_and_redirects(authenticated_client, timetable_data, monkeypatch):
+    """AC #2: POST /approva sets constraint status to verified and redirects to /verifica."""
+    vincoli_url, timetable_id = await _create_translated_constraint(authenticated_client, timetable_data, monkeypatch)
+
+    # GET verifica to find the constraint ID from the page
+    response = await authenticated_client.get(vincoli_url + "/verifica")
+    assert "Approva" in response.text
+
+    # Extract constraint ID from the form action
+    import re
+
+    match = re.search(r"/vincoli/([0-9a-f-]+)/approva", response.text)
+    assert match, "Could not find approve form action in page"
+    constraint_id = match.group(1)
+
+    csrf = _get_csrf_token(authenticated_client)
+    response = await authenticated_client.post(
+        f"/orario/{timetable_id}/vincoli/{constraint_id}/approva",
+        headers={"x-csrftoken": csrf},
+        follow_redirects=False,
+    )
+    assert response.status_code in (301, 302, 303)
+    assert "/verifica" in response.headers["location"]
+
+    # Follow redirect and verify status changed
+    response = await authenticated_client.get(vincoli_url + "/verifica")
+    assert "verificato" in response.text
+
+
+async def test_post_rifiuta_sets_rejected_and_redirects(authenticated_client, timetable_data, monkeypatch):
+    """AC #3: POST /rifiuta sets constraint status to rejected and redirects to /verifica."""
+    vincoli_url, timetable_id = await _create_translated_constraint(authenticated_client, timetable_data, monkeypatch)
+
+    response = await authenticated_client.get(vincoli_url + "/verifica")
+    import re
+
+    match = re.search(r"/vincoli/([0-9a-f-]+)/rifiuta", response.text)
+    assert match, "Could not find reject form action in page"
+    constraint_id = match.group(1)
+
+    csrf = _get_csrf_token(authenticated_client)
+    response = await authenticated_client.post(
+        f"/orario/{timetable_id}/vincoli/{constraint_id}/rifiuta",
+        headers={"x-csrftoken": csrf},
+        follow_redirects=False,
+    )
+    assert response.status_code in (301, 302, 303)
+    assert "/verifica" in response.headers["location"]
+
+    response = await authenticated_client.get(vincoli_url + "/verifica")
+    assert "rifiutato" in response.text
+
+
+async def test_post_approva_as_professor_returns_403(authenticated_professor_client, timetable_data):
+    """AC #5: Professor (not Responsible) cannot approve."""
+    response = await authenticated_professor_client.post(
+        f"/orario/{uuid.uuid4()}/vincoli/{uuid.uuid4()}/approva",
+        headers={"x-csrftoken": _get_csrf_token(authenticated_professor_client)},
+    )
+    assert response.status_code == 403
+
+
+async def test_post_rifiuta_as_professor_returns_403(authenticated_professor_client, timetable_data):
+    """AC #5: Professor (not Responsible) cannot reject."""
+    response = await authenticated_professor_client.post(
+        f"/orario/{uuid.uuid4()}/vincoli/{uuid.uuid4()}/rifiuta",
+        headers={"x-csrftoken": _get_csrf_token(authenticated_professor_client)},
+    )
+    assert response.status_code == 403
+
+
+async def test_post_approva_non_owned_timetable_returns_403(authenticated_client, timetable_data, monkeypatch):
+    """AC #6: Cannot approve constraint on another user's timetable."""
+    vincoli_url, timetable_id = await _create_translated_constraint(authenticated_client, timetable_data, monkeypatch)
+
+    response = await authenticated_client.get(vincoli_url + "/verifica")
+    import re
+
+    match = re.search(r"/vincoli/([0-9a-f-]+)/approva", response.text)
+    assert match
+    constraint_id = match.group(1)
+
+    # Logout and login as different user
+    csrf = _get_csrf_token(authenticated_client)
+    await authenticated_client.post("/esci", headers={"x-csrftoken": csrf}, follow_redirects=False)
+    await authenticated_client.get("/registrati")
+    csrf = _get_csrf_token(authenticated_client)
+    await authenticated_client.post(
+        "/registrati",
+        data={"email": "other@example.com", "password": "password123", "password_confirm": "password123"},
+        headers={"x-csrftoken": csrf},
+    )
+    await authenticated_client.get("/accedi")
+    csrf = _get_csrf_token(authenticated_client)
+    await authenticated_client.post(
+        "/accedi",
+        data={"email": "other@example.com", "password": "password123"},
+        headers={"x-csrftoken": csrf},
+        follow_redirects=False,
+    )
+
+    csrf = _get_csrf_token(authenticated_client)
+    response = await authenticated_client.post(
+        f"/orario/{timetable_id}/vincoli/{constraint_id}/approva",
+        headers={"x-csrftoken": csrf},
+    )
+    assert response.status_code == 403
+
+
+async def test_post_approva_non_translated_constraint_returns_error(authenticated_client, timetable_data, monkeypatch):
+    """AC #7: Approving a non-translated constraint fails gracefully."""
+    vincoli_url, timetable_id = await _create_translated_constraint(authenticated_client, timetable_data, monkeypatch)
+
+    # Get constraint ID
+    response = await authenticated_client.get(vincoli_url + "/verifica")
+    import re
+
+    match = re.search(r"/vincoli/([0-9a-f-]+)/approva", response.text)
+    assert match
+    constraint_id = match.group(1)
+
+    # Approve once (status becomes verified)
+    csrf = _get_csrf_token(authenticated_client)
+    await authenticated_client.post(
+        f"/orario/{timetable_id}/vincoli/{constraint_id}/approva",
+        headers={"x-csrftoken": csrf},
+        follow_redirects=False,
+    )
+
+    # Try to approve again (now status is verified, not translated)
+    csrf = _get_csrf_token(authenticated_client)
+    response = await authenticated_client.post(
+        f"/orario/{timetable_id}/vincoli/{constraint_id}/approva",
+        headers={"x-csrftoken": csrf},
+        follow_redirects=False,
+    )
+    # Should redirect back to /verifica (graceful handling of invalid status)
+    assert response.status_code in (301, 302, 303)
+    assert "/verifica" in response.headers["location"]
+
+
+async def test_verification_page_shows_approve_reject_buttons(authenticated_client, timetable_data, monkeypatch):
+    """AC #1: Translated constraint cards show Approva and Rifiuta buttons."""
+    vincoli_url, _ = await _create_translated_constraint(authenticated_client, timetable_data, monkeypatch)
+
+    response = await authenticated_client.get(vincoli_url + "/verifica")
+    assert response.status_code == 200
+    assert "Approva" in response.text
+    assert "Rifiuta" in response.text
+    assert "/approva" in response.text
+    assert "/rifiuta" in response.text
+
+
+async def test_verification_page_shows_genera_link_when_all_verified(authenticated_client, timetable_data, monkeypatch):
+    """AC #4: 'Genera orario' link appears when all constraints verified, none translated."""
+    vincoli_url, timetable_id = await _create_translated_constraint(authenticated_client, timetable_data, monkeypatch)
+
+    # Approve the constraint
+    response = await authenticated_client.get(vincoli_url + "/verifica")
+    import re
+
+    match = re.search(r"/vincoli/([0-9a-f-]+)/approva", response.text)
+    assert match
+    constraint_id = match.group(1)
+
+    csrf = _get_csrf_token(authenticated_client)
+    await authenticated_client.post(
+        f"/orario/{timetable_id}/vincoli/{constraint_id}/approva",
+        headers={"x-csrftoken": csrf},
+        follow_redirects=False,
+    )
+
+    # Check that Genera orario link appears
+    response = await authenticated_client.get(vincoli_url + "/verifica")
+    assert "Genera orario" in response.text
+    assert f"/orario/{timetable_id}/genera" in response.text
+
+
+async def test_verification_page_hides_genera_link_when_translated_remain(
+    authenticated_client, timetable_data, monkeypatch
+):
+    """AC #4: No 'Genera orario' when translated constraints still exist."""
+    vincoli_url, _ = await _create_translated_constraint(authenticated_client, timetable_data, monkeypatch)
+
+    # Page still has translated constraint — no genera link
+    response = await authenticated_client.get(vincoli_url + "/verifica")
+    assert "Genera orario" not in response.text

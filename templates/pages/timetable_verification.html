@@ -4,9 +4,10 @@
 <div class="container" style="--container-max: 640px;">
   <h1>Verifica vincoli — {{ timetable.class_identifier }}</h1>
 
-  {% if translated_count or failed_count %}
+  {% if translated_count or failed_count or verified_count %}
   <p>
-    {% if translated_count %}<span badge data-variant="success">{{ translated_count }} tradotti</span>{% endif %}
+    {% if verified_count %}<span badge data-variant="success">{{ verified_count }} verificati</span>{% endif %}
+    {% if translated_count %}<span badge data-variant="warning">{{ translated_count }} da verificare</span>{% endif %}
     {% if failed_count %}<span badge data-variant="error">{{ failed_count }} errori</span>{% endif %}
   </p>
   {% endif %}
@@ -25,6 +26,16 @@
       <summary>Dettagli tecnici (JSON)</summary>
       <pre><code>{{ constraint.formal_representation | tojson(indent=2) }}</code></pre>
     </details>
+    <div class="hstack">
+      <form method="post" action="/orario/{{ timetable.id }}/vincoli/{{ constraint.id }}/approva">
+        {{ csrf_input | safe }}
+        <button type="submit" class="small">Approva</button>
+      </form>
+      <form method="post" action="/orario/{{ timetable.id }}/vincoli/{{ constraint.id }}/rifiuta">
+        {{ csrf_input | safe }}
+        <button type="submit" class="small outline">Rifiuta</button>
+      </form>
+    </div>
     {% elif constraint.status == "translation_failed" %}
     <p><span badge data-variant="error">errore traduzione</span> Impossibile tradurre il vincolo. Prova a riformularlo.</p>
     <form method="post" action="/orario/{{ timetable.id }}/vincoli/verifica">
@@ -35,10 +46,18 @@
     <p><span badge data-variant="success">verificato</span> {{ constraint.formal_representation.description }}</p>
     {% elif constraint.status == "rejected" %}
     <p><span badge data-variant="error">rifiutato</span></p>
+    <p><a href="/orario/{{ timetable.id }}/vincoli">Modifica e riprova</a></p>
     {% endif %}
   </article>
   {% endif %}
   {% endfor %}
+
+  {% set has_translated = constraints | selectattr("status", "equalto", "translated") | list | length > 0 %}
+  {% set verified_count_val = constraints | selectattr("status", "equalto", "verified") | list | length %}
+
+  {% if verified_count_val >= 1 and not has_translated %}
+  <a href="/orario/{{ timetable.id }}/genera" class="button w-100">Genera orario</a>
+  {% endif %}
 
   <div class="hstack">
     <a href="/orario/{{ timetable.id }}/vincoli" class="button outline">Torna ai vincoli</a>
