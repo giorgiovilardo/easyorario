@@ -1,8 +1,10 @@
 """Tests for the ConstraintService."""
 
+import uuid
 from unittest.mock import AsyncMock
 
 import pytest
+from litestar.exceptions import NotAuthorizedException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from easyorario.exceptions import InvalidConstraintDataError, LLMConfigError, LLMTranslationError
@@ -300,3 +302,99 @@ async def test_translate_pending_constraints_retries_previously_failed(
     assert mock_translate.call_count == 1
     assert results[0].status == "translated"
     assert results[0].formal_representation == VALID_TRANSLATION
+
+
+# --- verify_constraint / reject_constraint tests (Story 3.3) ---
+
+
+async def _add_translated_constraint(db_session: AsyncSession, timetable: Timetable) -> Constraint:
+    """Helper: add a constraint with status 'translated' and valid formal_representation."""
+    c = Constraint(
+        timetable_id=timetable.id,
+        natural_language_text="Prof. Rossi non può il lunedì",
+        status="translated",
+        formal_representation=VALID_TRANSLATION,
+    )
+    db_session.add(c)
+    await db_session.flush()
+    return c
+
+
+async def test_verify_constraint_sets_status_to_verified(
+    db_session: AsyncSession, db_timetable: Timetable, constraint_service: ConstraintService
+):
+    """Happy path: verify_constraint changes status from translated to verified."""
+    c = await _add_translated_constraint(db_session, db_timetable)
+
+    result = await constraint_service.verify_constraint(constraint_id=c.id, timetable_id=db_timetable.id)
+
+    assert result.status == "verified"
+    assert result.formal_representation == VALID_TRANSLATION
+
+
+async def test_reject_constraint_sets_status_to_rejected(
+    db_session: AsyncSession, db_timetable: Timetable, constraint_service: ConstraintService
+):
+    """Happy path: reject_constraint changes status to rejected and clears formal_representation."""
+    c = await _add_translated_constraint(db_session, db_timetable)
+
+    result = await constraint_service.reject_constraint(constraint_id=c.id, timetable_id=db_timetable.id)
+
+    assert result.status == "rejected"
+    assert result.formal_representation is None
+
+
+async def test_verify_constraint_non_translated_raises(
+    db_session: AsyncSession, db_timetable: Timetable, constraint_service: ConstraintService
+):
+    """Status guard: only 'translated' constraints can be verified."""
+    for status in ("pending", "translation_failed", "verified", "rejected"):
+        c = Constraint(
+            timetable_id=db_timetable.id,
+            natural_language_text=f"Constraint with status {status}",
+            status=status,
+        )
+        db_session.add(c)
+        await db_session.flush()
+
+        with pytest.raises(InvalidConstraintDataError) as exc_info:
+            await constraint_service.verify_constraint(constraint_id=c.id, timetable_id=db_timetable.id)
+        assert exc_info.value.error_key == "constraint_not_translatable"
+
+
+async def test_reject_constraint_non_translated_raises(
+    db_session: AsyncSession, db_timetable: Timetable, constraint_service: ConstraintService
+):
+    """Status guard: only 'translated' constraints can be rejected."""
+    for status in ("pending", "translation_failed", "verified", "rejected"):
+        c = Constraint(
+            timetable_id=db_timetable.id,
+            natural_language_text=f"Constraint with status {status}",
+            status=status,
+        )
+        db_session.add(c)
+        await db_session.flush()
+
+        with pytest.raises(InvalidConstraintDataError) as exc_info:
+            await constraint_service.reject_constraint(constraint_id=c.id, timetable_id=db_timetable.id)
+        assert exc_info.value.error_key == "constraint_not_translatable"
+
+
+async def test_verify_constraint_wrong_timetable_raises(
+    db_session: AsyncSession, db_timetable: Timetable, constraint_service: ConstraintService
+):
+    """Timetable ownership: constraint must belong to the given timetable."""
+    c = await _add_translated_constraint(db_session, db_timetable)
+
+    with pytest.raises(NotAuthorizedException):
+        await constraint_service.verify_constraint(constraint_id=c.id, timetable_id=uuid.uuid4())
+
+
+async def test_reject_constraint_wrong_timetable_raises(
+    db_session: AsyncSession, db_timetable: Timetable, constraint_service: ConstraintService
+):
+    """Timetable ownership: constraint must belong to the given timetable."""
+    c = await _add_translated_constraint(db_session, db_timetable)
+
+    with pytest.raises(NotAuthorizedException):
+        await constraint_service.reject_constraint(constraint_id=c.id, timetable_id=uuid.uuid4())

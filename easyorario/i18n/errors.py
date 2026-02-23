@@ -31,4 +31,7 @@ MESSAGES: dict[str, str] = {
     "translation_success": "Vincoli tradotti con successo",
     "all_translations_failed": "Impossibile tradurre i vincoli. Verifica la configurazione LLM o riformula i vincoli",
     "no_pending_constraints": "Nessun vincolo in attesa di traduzione",
+    "constraint_approved": "Vincolo approvato",
+    "constraint_rejected": "Vincolo rifiutato",
+    "constraint_not_translatable": "Il vincolo deve essere nello stato 'tradotto' per essere approvato o rifiutato",
 }

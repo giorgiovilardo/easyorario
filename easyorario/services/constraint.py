@@ -3,6 +3,7 @@
 import uuid
 
 import structlog
+from litestar.exceptions import NotAuthorizedException
 
 from easyorario.exceptions import InvalidConstraintDataError, LLMConfigError, LLMTranslationError
 from easyorario.models.constraint import Constraint
@@ -44,6 +45,39 @@ class ConstraintService:
     async def list_constraints(self, *, timetable_id: uuid.UUID) -> list[Constraint]:
         """Return all constraints for a timetable, ordered by created_at."""
         return await self.constraint_repo.get_by_timetable(timetable_id)
+
+    async def verify_constraint(
+        self,
+        *,
+        constraint_id: uuid.UUID,
+        timetable_id: uuid.UUID,
+    ) -> Constraint:
+        """Approve a translated constraint."""
+        constraint = await self.constraint_repo.get(constraint_id)
+        if constraint.timetable_id != timetable_id:
+            raise NotAuthorizedException(detail="Insufficient permissions")
+        if constraint.status != "translated":
+            raise InvalidConstraintDataError("constraint_not_translatable")
+        constraint.status = "verified"
+        await _log.ainfo("constraint_verified", constraint_id=str(constraint_id))
+        return await self.constraint_repo.update(constraint)
+
+    async def reject_constraint(
+        self,
+        *,
+        constraint_id: uuid.UUID,
+        timetable_id: uuid.UUID,
+    ) -> Constraint:
+        """Reject a translated constraint."""
+        constraint = await self.constraint_repo.get(constraint_id)
+        if constraint.timetable_id != timetable_id:
+            raise NotAuthorizedException(detail="Insufficient permissions")
+        if constraint.status != "translated":
+            raise InvalidConstraintDataError("constraint_not_translatable")
+        constraint.status = "rejected"
+        constraint.formal_representation = None
+        await _log.ainfo("constraint_rejected", constraint_id=str(constraint_id))
+        return await self.constraint_repo.update(constraint)
 
     async def translate_pending_constraints(
         self,
