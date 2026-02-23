@@ -1,17 +1,28 @@
 """Constraint service for business logic."""
 
 import uuid
+from dataclasses import dataclass
 
 import structlog
 from litestar.exceptions import NotAuthorizedException
 
 from easyorario.exceptions import InvalidConstraintDataError, LLMConfigError, LLMTranslationError
+from easyorario.i18n.errors import MESSAGES
 from easyorario.models.constraint import Constraint
 from easyorario.models.timetable import Timetable
 from easyorario.repositories.constraint import ConstraintRepository
 from easyorario.services.llm import LLMService
 
 _log = structlog.get_logger()
+
+
+@dataclass
+class ConflictWarning:
+    """A detected pre-solve conflict between constraints."""
+
+    conflict_type: str  # "teacher_double_booking" or "hour_total_mismatch"
+    message: str  # Italian human-readable description
+    constraint_descriptions: list[str]  # descriptions of the conflicting constraints
 
 
 class ConstraintService:
@@ -78,6 +89,115 @@ class ConstraintService:
         constraint.formal_representation = None
         await _log.ainfo("constraint_rejected", constraint_id=str(constraint_id))
         return await self.constraint_repo.update(constraint)
+
+    def detect_conflicts(
+        self,
+        constraints: list[Constraint],
+        timetable: Timetable,
+    ) -> list[ConflictWarning]:
+        """Detect obvious conflicts among verified constraints before solving."""
+        verified = [c for c in constraints if c.status == "verified" and c.formal_representation]
+        if not verified:
+            return []
+
+        warnings: list[ConflictWarning] = []
+        warnings.extend(self._detect_teacher_double_bookings(verified))
+        warnings.extend(self._detect_hour_total_mismatches(verified, timetable))
+        return warnings
+
+    def _detect_teacher_double_bookings(
+        self,
+        verified: list[Constraint],
+    ) -> list[ConflictWarning]:
+        """Find verified constraints that double-book a teacher on the same day+slot."""
+        warnings: list[ConflictWarning] = []
+
+        # Group constraints by teacher
+        teacher_constraints: dict[str, list[Constraint]] = {}
+        for c in verified:
+            fr = c.formal_representation
+            if not fr or not isinstance(fr, dict):
+                _log.warning("skipping_malformed_formal_representation", constraint_id=str(c.id))
+                continue
+            teacher = fr.get("teacher")
+            if not teacher:
+                continue
+            teacher_constraints.setdefault(teacher, []).append(c)
+
+        # For each teacher with multiple constraints, check for day+slot overlaps
+        for teacher, constraints in teacher_constraints.items():
+            if len(constraints) < 2:
+                continue
+            slot_map: dict[tuple[str, int], Constraint] = {}
+            for c in constraints:
+                fr = c.formal_representation
+                if not fr:
+                    continue
+                days = fr.get("days") or []
+                slots = fr.get("time_slots") or []
+                if not days or not slots:
+                    continue
+                for day in days:
+                    for slot in slots:
+                        if (day, slot) in slot_map:
+                            other = slot_map[(day, slot)]
+                            other_fr = other.formal_representation or {}
+                            msg = MESSAGES["conflict_teacher_double_booking"].format(
+                                teacher=teacher,
+                                day=day,
+                                slot=slot,
+                            )
+                            warnings.append(
+                                ConflictWarning(
+                                    conflict_type="teacher_double_booking",
+                                    message=msg,
+                                    constraint_descriptions=[
+                                        other_fr.get("description", ""),
+                                        fr.get("description", ""),
+                                    ],
+                                )
+                            )
+                        else:
+                            slot_map[(day, slot)] = c
+        return warnings
+
+    def _detect_hour_total_mismatches(
+        self,
+        verified: list[Constraint],
+        timetable: Timetable,
+    ) -> list[ConflictWarning]:
+        """Check if total subject hours in constraints exceed timetable weekly_hours."""
+        warnings: list[ConflictWarning] = []
+
+        total_allocated_slots = 0
+        slot_constraints: list[str] = []
+        for c in verified:
+            fr = c.formal_representation
+            if not fr or not isinstance(fr, dict):
+                continue
+            days = fr.get("days") or []
+            slots = fr.get("time_slots") or []
+            if days and slots:
+                allocated = len(days) * len(slots)
+                total_allocated_slots += allocated
+                desc = fr.get("description", "")
+                if desc:
+                    slot_constraints.append(desc)
+
+        if total_allocated_slots > timetable.weekly_hours:
+            msg = MESSAGES["conflict_hour_total_mismatch"].format(
+                total=total_allocated_slots,
+                weekly_hours=timetable.weekly_hours,
+            )
+            warnings.append(
+                ConflictWarning(
+                    conflict_type="hour_total_mismatch",
+                    message=msg,
+                    constraint_descriptions=slot_constraints,
+                )
+            )
+
+        return warnings
 
     async def translate_pending_constraints(
         self,

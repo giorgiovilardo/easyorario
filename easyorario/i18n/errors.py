@@ -32,4 +32,10 @@ MESSAGES: dict[str, str] = {
     "all_translations_failed": "Impossibile tradurre i vincoli. Verifica la configurazione LLM o riformula i vincoli",
     "no_pending_constraints": "Nessun vincolo in attesa di traduzione",
     "constraint_not_translatable": "Il vincolo deve essere nello stato 'tradotto' per essere approvato o rifiutato",
+    "conflict_teacher_double_booking": (
+        "Conflitto: {teacher} è assegnato a più lezioni contemporaneamente ({day}, ora {slot})"
+    ),
+    "conflict_hour_total_mismatch": (
+        "Le ore totali assegnate ({total}) superano le ore settimanali dell'orario ({weekly_hours})"
+    ),
 }
