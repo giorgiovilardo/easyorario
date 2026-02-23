@@ -1,5 +1,6 @@
 """Constraint controller — add, list, and verify scheduling constraints."""
 
+import contextlib
 import uuid
 from dataclasses import dataclass
 from typing import Annotated
@@ -113,6 +114,7 @@ class ConstraintController(Controller):
 
         translated_count = sum(1 for c in constraints if c.status == "translated")
         failed_count = sum(1 for c in constraints if c.status == "translation_failed")
+        verified_count = sum(1 for c in constraints if c.status == "verified")
 
         return Template(
             template_name="pages/timetable_verification.html",
@@ -121,6 +123,7 @@ class ConstraintController(Controller):
                 "constraints": constraints,
                 "translated_count": translated_count,
                 "failed_count": failed_count,
+                "verified_count": verified_count,
                 "user": request.user,
             },
         )
@@ -141,6 +144,7 @@ class ConstraintController(Controller):
         constraints = await constraint_service.list_constraints(timetable_id=timetable_id)
         translated_count = sum(1 for c in constraints if c.status == "translated")
         failed_count = sum(1 for c in constraints if c.status == "translation_failed")
+        verified_count = sum(1 for c in constraints if c.status == "verified")
 
         return Template(
             template_name="pages/timetable_verification.html",
@@ -149,6 +153,47 @@ class ConstraintController(Controller):
                 "constraints": constraints,
                 "translated_count": translated_count,
                 "failed_count": failed_count,
+                "verified_count": verified_count,
                 "user": request.user,
             },
         )
+
+    @post("/{constraint_id:uuid}/approva", guards=[requires_responsible_professor])
+    async def approve_constraint(
+        self,
+        request: Request,
+        timetable_id: uuid.UUID,
+        constraint_id: uuid.UUID,
+        timetable_repo: TimetableRepository,
+        constraint_service: ConstraintService,
+    ) -> Redirect:
+        """Approve a translated constraint (set status to verified)."""
+        timetable = await timetable_repo.get(timetable_id)
+        if timetable.owner_id != request.user.id:
+            raise NotAuthorizedException(detail="Insufficient permissions")
+        with contextlib.suppress(InvalidConstraintDataError):
+            await constraint_service.verify_constraint(
+                constraint_id=constraint_id,
+                timetable_id=timetable_id,
+            )
+        return Redirect(path=f"/orario/{timetable_id}/vincoli/verifica")
+
+    @post("/{constraint_id:uuid}/rifiuta", guards=[requires_responsible_professor])
+    async def reject_constraint(
+        self,
+        request: Request,
+        timetable_id: uuid.UUID,
+        constraint_id: uuid.UUID,
+        timetable_repo: TimetableRepository,
+        constraint_service: ConstraintService,
+    ) -> Redirect:
+        """Reject a translated constraint (set status to rejected)."""
+        timetable = await timetable_repo.get(timetable_id)
+        if timetable.owner_id != request.user.id:
+            raise NotAuthorizedException(detail="Insufficient permissions")
+        with contextlib.suppress(InvalidConstraintDataError):
+            await constraint_service.reject_constraint(
+                constraint_id=constraint_id,
+                timetable_id=timetable_id,
+            )
+        return Redirect(path=f"/orario/{timetable_id}/vincoli/verifica")
