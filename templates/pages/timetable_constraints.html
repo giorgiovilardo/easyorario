@@ -6,6 +6,20 @@
 
   {% include "partials/flash_messages.html" %}
 
+  {% if conflict_warnings %}
+  <div class="alert warning" role="alert">
+    <p><strong>Attenzione: conflitti rilevati tra i vincoli</strong></p>
+    {% for warning in conflict_warnings %}
+    <p>{{ warning.message }}</p>
+    <ul>
+      {% for desc in warning.constraint_descriptions %}
+      <li>{{ desc }}</li>
+      {% endfor %}
+    </ul>
+    {% endfor %}
+  </div>
+  {% endif %}
+
   <article class="card">
     <form method="post" action="/orario/{{ timetable.id }}/vincoli">
       {{ csrf_input | safe }}

@@ -46,6 +46,7 @@ class ConstraintController(Controller):
         constraints = await constraint_service.list_constraints(timetable_id=timetable_id)
         has_pending = any(c.status == "pending" for c in constraints)
         has_failed = any(c.status == "translation_failed" for c in constraints)
+        conflict_warnings = constraint_service.detect_conflicts(constraints, timetable)
         return Template(
             template_name="pages/timetable_constraints.html",
             context={
@@ -53,6 +54,7 @@ class ConstraintController(Controller):
                 "constraints": constraints,
                 "has_pending": has_pending,
                 "has_failed": has_failed,
+                "conflict_warnings": conflict_warnings,
                 "user": request.user,
             },
         )
@@ -80,6 +82,7 @@ class ConstraintController(Controller):
             constraints = await constraint_service.list_constraints(timetable_id=timetable_id)
             has_pending = any(c.status == "pending" for c in constraints)
             has_failed = any(c.status == "translation_failed" for c in constraints)
+            conflict_warnings = constraint_service.detect_conflicts(constraints, timetable)
             return Template(
                 "pages/timetable_constraints.html",
                 context={
@@ -88,6 +91,7 @@ class ConstraintController(Controller):
                     "constraints": constraints,
                     "has_pending": has_pending,
                     "has_failed": has_failed,
+                    "conflict_warnings": conflict_warnings,
                     "user": request.user,
                 },
             )
@@ -117,6 +121,7 @@ class ConstraintController(Controller):
         translated_count = sum(1 for c in constraints if c.status == "translated")
         failed_count = sum(1 for c in constraints if c.status == "translation_failed")
         verified_count = sum(1 for c in constraints if c.status == "verified")
+        conflict_warnings = constraint_service.detect_conflicts(constraints, timetable)
 
         return Template(
             template_name="pages/timetable_verification.html",
@@ -126,6 +131,7 @@ class ConstraintController(Controller):
                 "translated_count": translated_count,
                 "failed_count": failed_count,
                 "verified_count": verified_count,
+                "conflict_warnings": conflict_warnings,
                 "user": request.user,
             },
         )
@@ -147,6 +153,7 @@ class ConstraintController(Controller):
         translated_count = sum(1 for c in constraints if c.status == "translated")
         failed_count = sum(1 for c in constraints if c.status == "translation_failed")
         verified_count = sum(1 for c in constraints if c.status == "verified")
+        conflict_warnings = constraint_service.detect_conflicts(constraints, timetable)
 
         return Template(
             template_name="pages/timetable_verification.html",
@@ -156,6 +163,7 @@ class ConstraintController(Controller):
                 "translated_count": translated_count,
                 "failed_count": failed_count,
                 "verified_count": verified_count,
+                "conflict_warnings": conflict_warnings,
                 "user": request.user,
             },
         )

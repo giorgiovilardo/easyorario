@@ -654,3 +654,130 @@ async def test_verification_page_hides_genera_link_when_translated_remain(
     # Page still has translated constraint — no genera link
     response = await authenticated_client.get(vincoli_url + "/verifica")
     assert "Genera orario" not in response.text
+
+
+# --- Conflict detection display tests (Story 3.4) ---
+
+
+async def _create_verified_constraint_via_ui(client, timetable_data, monkeypatch):
+    """Helper: create a timetable, add a constraint, translate and approve it.
+    Returns (vincoli_url, timetable_id).
+    """
+    vincoli_url, timetable_id = await _create_translated_constraint(client, timetable_data, monkeypatch)
+
+    # Get constraint ID and approve it
+    response = await client.get(vincoli_url + "/verifica")
+    match = re.search(r"/vincoli/([0-9a-f-]+)/approva", response.text)
+    assert match, "Could not find approve form action in page"
+    constraint_id = match.group(1)
+
+    csrf = _get_csrf_token(client)
+    await client.post(
+        f"/orario/{timetable_id}/vincoli/{constraint_id}/approva",
+        headers={"x-csrftoken": csrf},
+        follow_redirects=False,
+    )
+    return vincoli_url, timetable_id
+
+
+async def test_constraints_page_shows_conflict_warning(authenticated_client, timetable_data, monkeypatch):
+    """AC #3: GET /vincoli renders warning alert when conflicts exist among verified constraints."""
+    # Create a timetable with a verified constraint
+    vincoli_url, timetable_id = await _create_verified_constraint_via_ui(
+        authenticated_client, timetable_data, monkeypatch
+    )
+
+    # Now add another constraint that conflicts (same teacher, same day+slot)
+    # We need to: add constraint, translate it, approve it
+    await authenticated_client.get(vincoli_url)
+    csrf = _get_csrf_token(authenticated_client)
+    await authenticated_client.post(
+        vincoli_url,
+        data={"text": "Prof. Rossi insegna anche fisica il lunedì"},
+        headers={"x-csrftoken": csrf},
+        follow_redirects=False,
+    )
+
+    # Translate this new constraint
+    async def mock_translate(self, **kwargs):
+        return VALID_TRANSLATION  # Same teacher, same days/slots → conflict
+
+    monkeypatch.setattr("easyorario.services.llm.LLMService.translate_constraint", mock_translate)
+    csrf = _get_csrf_token(authenticated_client)
+    await authenticated_client.post(vincoli_url + "/verifica", headers={"x-csrftoken": csrf})
+
+    # Approve the second constraint
+    response = await authenticated_client.get(vincoli_url + "/verifica")
+    matches = re.findall(r"/vincoli/([0-9a-f-]+)/approva", response.text)
+    for constraint_id in matches:
+        csrf = _get_csrf_token(authenticated_client)
+        await authenticated_client.post(
+            f"/orario/{timetable_id}/vincoli/{constraint_id}/approva",
+            headers={"x-csrftoken": csrf},
+            follow_redirects=False,
+        )
+
+    # Now GET /vincoli should show conflict warning
+    response = await authenticated_client.get(vincoli_url)
+    assert response.status_code == 200
+    assert "Attenzione" in response.text or "Conflitto" in response.text
+
+
+async def test_constraints_page_no_warning_when_no_conflicts(authenticated_client, timetable_data, monkeypatch):
+    """AC #4: GET /vincoli shows no warning when no conflicts exist."""
+    vincoli_url = await _create_timetable(authenticated_client, timetable_data)
+
+    # Add a single constraint (no possible conflict with just one)
+    await authenticated_client.get(vincoli_url)
+    csrf = _get_csrf_token(authenticated_client)
+    await authenticated_client.post(
+        vincoli_url,
+        data={"text": "Matematica massimo 2 ore consecutive"},
+        headers={"x-csrftoken": csrf},
+        follow_redirects=False,
+    )
+
+    response = await authenticated_client.get(vincoli_url)
+    assert response.status_code == 200
+    assert "Conflitto" not in response.text
+    assert "conflitti rilevati" not in response.text
+
+
+async def test_verification_page_shows_conflict_warning(authenticated_client, timetable_data, monkeypatch):
+    """AC #3: GET /verifica renders warning alert when conflicts exist among verified constraints."""
+    vincoli_url, timetable_id = await _create_verified_constraint_via_ui(
+        authenticated_client, timetable_data, monkeypatch
+    )
+
+    # Add and approve a second conflicting constraint
+    await authenticated_client.get(vincoli_url)
+    csrf = _get_csrf_token(authenticated_client)
+    await authenticated_client.post(
+        vincoli_url,
+        data={"text": "Prof. Rossi insegna anche fisica il lunedì"},
+        headers={"x-csrftoken": csrf},
+        follow_redirects=False,
+    )
+
+    async def mock_translate(self, **kwargs):
+        return VALID_TRANSLATION
+
+    monkeypatch.setattr("easyorario.services.llm.LLMService.translate_constraint", mock_translate)
+    csrf = _get_csrf_token(authenticated_client)
+    await authenticated_client.post(vincoli_url + "/verifica", headers={"x-csrftoken": csrf})
+
+    # Approve all translated constraints
+    response = await authenticated_client.get(vincoli_url + "/verifica")
+    matches = re.findall(r"/vincoli/([0-9a-f-]+)/approva", response.text)
+    for constraint_id in matches:
+        csrf = _get_csrf_token(authenticated_client)
+        await authenticated_client.post(
+            f"/orario/{timetable_id}/vincoli/{constraint_id}/approva",
+            headers={"x-csrftoken": csrf},
+            follow_redirects=False,
+        )
+
+    # Now GET /verifica should show conflict warning
+    response = await authenticated_client.get(vincoli_url + "/verifica")
+    assert response.status_code == 200
+    assert "Attenzione" in response.text or "Conflitto" in response.text
