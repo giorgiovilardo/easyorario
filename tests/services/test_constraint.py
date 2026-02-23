@@ -398,3 +398,232 @@ async def test_reject_constraint_wrong_timetable_raises(
 
     with pytest.raises(NotAuthorizedException):
         await constraint_service.reject_constraint(constraint_id=c.id, timetable_id=uuid.uuid4())
+
+
+# --- detect_conflicts tests (Story 3.4) ---
+
+
+async def _add_verified_constraint(
+    db_session: AsyncSession,
+    timetable: Timetable,
+    formal_representation: dict,
+) -> Constraint:
+    """Helper: create a verified constraint with given formal_representation."""
+    constraint = Constraint(
+        timetable_id=timetable.id,
+        natural_language_text="Test constraint",
+        formal_representation=formal_representation,
+        status="verified",
+    )
+    db_session.add(constraint)
+    await db_session.flush()
+    return constraint
+
+
+async def test_detect_conflicts_finds_teacher_double_booking(
+    db_session: AsyncSession, db_timetable: Timetable, constraint_service: ConstraintService
+):
+    """Two verified constraints with same teacher, same day+slot → conflict warning."""
+    await _add_verified_constraint(
+        db_session,
+        db_timetable,
+        {
+            "description": "Prof. Rossi insegna matematica lunedì 1-2 ora",
+            "teacher": "Prof. Rossi",
+            "days": ["lunedì"],
+            "time_slots": [1, 2],
+        },
+    )
+    await _add_verified_constraint(
+        db_session,
+        db_timetable,
+        {
+            "description": "Prof. Rossi insegna fisica lunedì 2 ora",
+            "teacher": "Prof. Rossi",
+            "days": ["lunedì"],
+            "time_slots": [2],
+        },
+    )
+    constraints = await constraint_service.list_constraints(timetable_id=db_timetable.id)
+    warnings = constraint_service.detect_conflicts(constraints, db_timetable)
+
+    assert len(warnings) == 1
+    assert warnings[0].conflict_type == "teacher_double_booking"
+    assert "Prof. Rossi" in warnings[0].message
+    assert len(warnings[0].constraint_descriptions) == 2
+
+
+async def test_detect_conflicts_finds_hour_total_mismatch(
+    db_session: AsyncSession, db_timetable: Timetable, constraint_service: ConstraintService
+):
+    """Total allocated slots exceed timetable weekly_hours → conflict warning."""
+    # db_timetable has weekly_hours=30; create constraints summing to > 30 slots
+    for i in range(7):
+        await _add_verified_constraint(
+            db_session,
+            db_timetable,
+            {
+                "description": f"Subject {i} — 5 days x 1 slot",
+                "teacher": f"Prof{i}",
+                "days": ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì"],
+                "time_slots": [i + 1],
+            },
+        )
+    # 7 constraints * 5 days * 1 slot = 35 > 30
+    constraints = await constraint_service.list_constraints(timetable_id=db_timetable.id)
+    warnings = constraint_service.detect_conflicts(constraints, db_timetable)
+
+    hour_warnings = [w for w in warnings if w.conflict_type == "hour_total_mismatch"]
+    assert len(hour_warnings) == 1
+    assert "35" in hour_warnings[0].message
+    assert "30" in hour_warnings[0].message
+
+
+async def test_detect_conflicts_returns_empty_for_no_conflicts(
+    db_session: AsyncSession, db_timetable: Timetable, constraint_service: ConstraintService
+):
+    """Non-overlapping constraints → empty list."""
+    await _add_verified_constraint(
+        db_session,
+        db_timetable,
+        {
+            "description": "Prof. Rossi lunedì 1 ora",
+            "teacher": "Prof. Rossi",
+            "days": ["lunedì"],
+            "time_slots": [1],
+        },
+    )
+    await _add_verified_constraint(
+        db_session,
+        db_timetable,
+        {
+            "description": "Prof. Bianchi lunedì 2 ora",
+            "teacher": "Prof. Bianchi",
+            "days": ["lunedì"],
+            "time_slots": [2],
+        },
+    )
+    constraints = await constraint_service.list_constraints(timetable_id=db_timetable.id)
+    warnings = constraint_service.detect_conflicts(constraints, db_timetable)
+    assert warnings == []
+
+
+async def test_detect_conflicts_skips_non_verified_constraints(
+    db_session: AsyncSession, db_timetable: Timetable, constraint_service: ConstraintService
+):
+    """Pending/rejected/translated constraints are ignored."""
+    for status in ("pending", "translated", "rejected", "translation_failed"):
+        c = Constraint(
+            timetable_id=db_timetable.id,
+            natural_language_text=f"Constraint with status {status}",
+            formal_representation={
+                "description": f"Constraint {status}",
+                "teacher": "Prof. Rossi",
+                "days": ["lunedì"],
+                "time_slots": [1],
+            },
+            status=status,
+        )
+        db_session.add(c)
+    await db_session.flush()
+
+    constraints = await constraint_service.list_constraints(timetable_id=db_timetable.id)
+    warnings = constraint_service.detect_conflicts(constraints, db_timetable)
+    assert warnings == []
+
+
+async def test_detect_conflicts_skips_none_formal_representation(
+    db_session: AsyncSession, db_timetable: Timetable, constraint_service: ConstraintService
+):
+    """Constraint with None formal_representation → skipped, no crash."""
+    c = Constraint(
+        timetable_id=db_timetable.id,
+        natural_language_text="Broken constraint",
+        formal_representation=None,
+        status="verified",
+    )
+    db_session.add(c)
+    await _add_verified_constraint(
+        db_session,
+        db_timetable,
+        {
+            "description": "Valid constraint",
+            "teacher": "Prof. Rossi",
+            "days": ["lunedì"],
+            "time_slots": [1],
+        },
+    )
+    await db_session.flush()
+
+    constraints = await constraint_service.list_constraints(timetable_id=db_timetable.id)
+    warnings = constraint_service.detect_conflicts(constraints, db_timetable)
+    # Should not crash, just skip the broken one
+    assert warnings == []
+
+
+async def test_detect_conflicts_empty_constraints_returns_empty(
+    db_timetable: Timetable, constraint_service: ConstraintService
+):
+    """Empty constraint list → empty warnings."""
+    warnings = constraint_service.detect_conflicts([], db_timetable)
+    assert warnings == []
+
+
+async def test_detect_conflicts_no_overlap_different_days(
+    db_session: AsyncSession, db_timetable: Timetable, constraint_service: ConstraintService
+):
+    """Same teacher, different days → no conflict."""
+    await _add_verified_constraint(
+        db_session,
+        db_timetable,
+        {
+            "description": "Prof. Rossi lunedì 1 ora",
+            "teacher": "Prof. Rossi",
+            "days": ["lunedì"],
+            "time_slots": [1],
+        },
+    )
+    await _add_verified_constraint(
+        db_session,
+        db_timetable,
+        {
+            "description": "Prof. Rossi martedì 1 ora",
+            "teacher": "Prof. Rossi",
+            "days": ["martedì"],
+            "time_slots": [1],
+        },
+    )
+    constraints = await constraint_service.list_constraints(timetable_id=db_timetable.id)
+    warnings = constraint_service.detect_conflicts(constraints, db_timetable)
+    teacher_warnings = [w for w in warnings if w.conflict_type == "teacher_double_booking"]
+    assert teacher_warnings == []
+
+
+async def test_detect_conflicts_no_overlap_different_slots(
+    db_session: AsyncSession, db_timetable: Timetable, constraint_service: ConstraintService
+):
+    """Same teacher, same day, different slots → no conflict."""
+    await _add_verified_constraint(
+        db_session,
+        db_timetable,
+        {
+            "description": "Prof. Rossi lunedì 1 ora",
+            "teacher": "Prof. Rossi",
+            "days": ["lunedì"],
+            "time_slots": [1],
+        },
+    )
+    await _add_verified_constraint(
+        db_session,
+        db_timetable,
+        {
+            "description": "Prof. Rossi lunedì 2 ora",
+            "teacher": "Prof. Rossi",
+            "days": ["lunedì"],
+            "time_slots": [2],
+        },
+    )
+    constraints = await constraint_service.list_constraints(timetable_id=db_timetable.id)
+    warnings = constraint_service.detect_conflicts(constraints, db_timetable)
+    teacher_warnings = [w for w in warnings if w.conflict_type == "teacher_double_booking"]
+    assert teacher_warnings == []
