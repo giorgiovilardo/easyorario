@@ -1,6 +1,6 @@
 # Story 3.4: Pre-Solve Constraint Conflict Detection
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- Prerequisites: Story 3.3 (Constraint Verification & Approval) MUST be completed before starting this story. -->
@@ -472,17 +472,25 @@ No blocking issues encountered.
 - 11 new tests added (8 service + 3 controller), total test count: 177 → 188, all passing
 - TDD approach followed: wrote failing tests first, then minimal implementation
 - Pyright fix: added `not fr` guard in inner loop and `or {}` pattern for optional dict access
+- Code review fixes (all 6 findings resolved):
+  - [HIGH] Hour-total mismatch now filters to `constraint_type == "subject_scheduling"` only, preventing false positives from unavailability constraints
+  - [MEDIUM] Teacher double-booking warnings deduplicated per constraint pair (no more N warnings for N overlapping slots)
+  - [MEDIUM] Empty `constraint_descriptions` filtered out (consistent with hour-total mismatch behavior)
+  - [LOW] Controller test assertions tightened to check specific alert text
+  - [LOW] Added tests for 3-way conflicts and multi-slot deduplication
+  - [LOW] Added comment explaining sync logging in sync method
 
 ### Change Log
 
 - 2026-02-23: Story 3.4 implementation complete — pre-solve conflict detection for teacher double-bookings and hour-total mismatches
+- 2026-02-23: Code review — 6 findings fixed (1 HIGH, 2 MEDIUM, 3 LOW)
 
 ### File List
 
-- `easyorario/services/constraint.py` (UPDATED: added ConflictWarning dataclass, detect_conflicts method with private helpers)
+- `easyorario/services/constraint.py` (UPDATED: added ConflictWarning dataclass, detect_conflicts method with private helpers; code review: constraint_type filter, pair dedup, empty desc filter)
 - `easyorario/i18n/errors.py` (UPDATED: added 2 conflict warning messages)
 - `easyorario/controllers/constraint.py` (UPDATED: call detect_conflicts in list_constraints, show_verification, translate_constraints, and add_constraint error path)
 - `templates/pages/timetable_constraints.html` (UPDATED: added conflict warning alert section)
 - `templates/pages/timetable_verification.html` (UPDATED: added conflict warning alert section)
-- `tests/services/test_constraint.py` (UPDATED: added 8 conflict detection service tests)
-- `tests/controllers/test_constraint.py` (UPDATED: added 3 conflict warning display controller tests)
+- `tests/services/test_constraint.py` (UPDATED: added 11 conflict detection service tests; code review: constraint_type fixtures, dedup/3-way tests)
+- `tests/controllers/test_constraint.py` (UPDATED: added 3 conflict warning display controller tests; code review: tighter assertions)
