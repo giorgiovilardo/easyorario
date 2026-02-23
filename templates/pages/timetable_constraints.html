@@ -25,15 +25,15 @@
     <article class="card">
       <p>
         {% if constraint.status == "pending" %}
-        <span badge>in attesa</span>
+        <span class="badge">in attesa</span>
         {% elif constraint.status == "translated" %}
-        <span badge data-variant="warning">tradotto</span>
+        <span class="badge warning">tradotto</span>
         {% elif constraint.status == "translation_failed" %}
-        <span badge data-variant="error">errore traduzione</span>
+        <span class="badge danger">errore traduzione</span>
         {% elif constraint.status == "verified" %}
-        <span badge data-variant="success">verificato</span>
+        <span class="badge success">verificato</span>
         {% elif constraint.status == "rejected" %}
-        <span badge data-variant="error">rifiutato</span>
+        <span class="badge danger">rifiutato</span>
         {% endif %}
         {{ constraint.natural_language_text }}
       </p>

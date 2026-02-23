@@ -6,9 +6,9 @@
 
   {% if translated_count or failed_count or verified_count %}
   <p>
-    {% if verified_count %}<span badge data-variant="success">{{ verified_count }} verificati</span>{% endif %}
-    {% if translated_count %}<span badge data-variant="warning">{{ translated_count }} da verificare</span>{% endif %}
-    {% if failed_count %}<span badge data-variant="error">{{ failed_count }} errori</span>{% endif %}
+    {% if verified_count %}<span class="badge success">{{ verified_count }} verificati</span>{% endif %}
+    {% if translated_count %}<span class="badge warning">{{ translated_count }} da verificare</span>{% endif %}
+    {% if failed_count %}<span class="badge danger">{{ failed_count }} errori</span>{% endif %}
   </p>
   {% endif %}
 
@@ -19,7 +19,7 @@
 
     {% if constraint.status == "translated" and constraint.formal_representation %}
     <p>
-      <span badge data-variant="warning">tradotto</span>
+      <span class="badge warning">tradotto</span>
       <strong>Interpretazione:</strong> {{ constraint.formal_representation.description }}
     </p>
     <details>
@@ -37,15 +37,15 @@
       </form>
     </div>
     {% elif constraint.status == "translation_failed" %}
-    <p><span badge data-variant="error">errore traduzione</span> Impossibile tradurre il vincolo. Prova a riformularlo.</p>
+    <p><span class="badge danger">errore traduzione</span> Impossibile tradurre il vincolo. Prova a riformularlo.</p>
     <form method="post" action="/orario/{{ timetable.id }}/vincoli/verifica">
       {{ csrf_input | safe }}
       <button type="submit" class="small outline">Riprova</button>
     </form>
     {% elif constraint.status == "verified" %}
-    <p><span badge data-variant="success">verificato</span> {% if constraint.formal_representation %}{{ constraint.formal_representation.description }}{% endif %}</p>
+    <p><span class="badge success">verificato</span> {% if constraint.formal_representation %}{{ constraint.formal_representation.description }}{% endif %}</p>
     {% elif constraint.status == "rejected" %}
-    <p><span badge data-variant="error">rifiutato</span></p>
+    <p><span class="badge danger">rifiutato</span></p>
     <p><a href="/orario/{{ timetable.id }}/vincoli">Modifica e riprova</a></p>
     {% endif %}
   </article>
